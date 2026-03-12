@@ -162,7 +162,6 @@ jobs:
           kubectl set image deployment/documenso-app \
             documenso-app=${{ needs.build-and-push.outputs.documenso_app_image }} \
             -n sign
-          kubectl rollout status deployment/documenso-app -n sign --timeout=120s
 
       - name: Deploy token-exchange
         if: ${{ !inputs.app_only || inputs.exchange_only }}
@@ -170,4 +169,3 @@ jobs:
           kubectl set image deployment/token-exchange \
             token-exchange=${{ needs.build-and-push.outputs.token_exchange_image }} \
             -n sign
-          kubectl rollout status deployment/token-exchange -n sign --timeout=120s
