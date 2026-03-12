@@ -1,41 +1,31 @@
-# Build and deploy Documenso to GKE (Google Artifact Registry + Kubernetes)
+# Build and deploy token-exchange to GKE (path-filtered, main only)
 #
-# Trigger: Manual (Actions tab → Build and deploy to GKE → Run workflow).
-# Image tag defaults to short SHA (7 chars); override via tag input if needed.
-# For path-filtered auto build/deploy on main, see build-deploy-documenso-app.yml and build-deploy-token-exchange.yml.
+# Triggers:
+#   - Push to main when token-exchange paths change (auto build + deploy)
+#   - Manual (Actions tab → Build and deploy token-exchange → Run workflow)
 #
-# Required secrets:
-#   GCP_SA_KEY - JSON key for a GCP service account with:
-#     - Artifact Registry Writer (to push images)
-#     - Kubernetes Engine Developer (to deploy, if deploy step enabled)
-#
-# For deploy step, set either secrets or variables (variables are fine - not sensitive):
-#   GKE_CLUSTER - GKE cluster name (e.g. my-cluster)
-#   GKE_ZONE    - Zone or region (e.g. us-central1-a or us-central1)
-#   GKE_PROJECT - (optional) GCP project; defaults to GCP_PROJECT_ID
+# Required secrets: GCP_SA_KEY
+# For deploy: GKE_CLUSTER, GKE_ZONE (secrets or variables); optional GKE_PROJECT
 
-name: Build and deploy to GKE
+name: Build and deploy token-exchange
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/token-exchange/**'
+      - 'packages/lib/**'
+      - 'packages/prisma/**'
+      - 'docker/Dockerfile.token-exchange'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Image tag (leave empty for short SHA; e.g. v1.0.0 or custom)'
+        description: 'Image tag (leave empty for short SHA)'
         required: false
         default: ''
         type: string
-      app_only:
-        description: 'Build documenso-app only (skip token-exchange)'
-        required: false
-        default: false
-        type: boolean
-      exchange_only:
-        description: 'Build and deploy token-exchange only (skip documenso-app)'
-        required: false
-        default: false
-        type: boolean
       deploy:
-        description: 'Deploy to GKE after build (requires GKE_CLUSTER, GKE_ZONE). Must check this for cluster to receive new images!'
+        description: 'Deploy to GKE after build'
         required: false
         default: false
         type: boolean
@@ -47,11 +37,10 @@ env:
 
 jobs:
   build-and-push:
-    name: Build and push images
+    name: Build and push token-exchange
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.vars.outputs.tag }}
-      documenso_app_image: ${{ steps.vars.outputs.documenso_app_image }}
       token_exchange_image: ${{ steps.vars.outputs.token_exchange_image }}
 
     steps:
@@ -67,7 +56,6 @@ jobs:
           fi
           REGISTRY="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "documenso_app_image=${REGISTRY}/documenso-app:${TAG}" >> $GITHUB_OUTPUT
           echo "token_exchange_image=${REGISTRY}/token-exchange:${TAG}" >> $GITHUB_OUTPUT
 
       - name: Authenticate to Google Cloud
@@ -95,17 +83,7 @@ jobs:
             --project=${{ env.GCP_PROJECT_ID }} \
             --description="Documenso container images"
 
-      - name: Build and push documenso-app
-        if: ${{ !inputs.exchange_only }}
-        run: |
-          docker build \
-            -t ${{ steps.vars.outputs.documenso_app_image }} \
-            -f docker/Dockerfile \
-            .
-          docker push ${{ steps.vars.outputs.documenso_app_image }}
-
       - name: Build and push token-exchange
-        if: ${{ !inputs.app_only || inputs.exchange_only }}
         run: |
           docker build \
             -t ${{ steps.vars.outputs.token_exchange_image }} \
@@ -117,7 +95,7 @@ jobs:
     name: Deploy to GKE
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: inputs.deploy
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy)
 
     steps:
       - name: Validate GKE cluster config
@@ -158,15 +136,7 @@ jobs:
             --location="${{ steps.gke-config.outputs.zone }}" \
             --project="${{ secrets.GKE_PROJECT || vars.GKE_PROJECT || env.GCP_PROJECT_ID }}"
 
-      - name: Deploy documenso-app
-        if: ${{ !inputs.exchange_only }}
-        run: |
-          kubectl set image deployment/documenso-app \
-            documenso-app=${{ needs.build-and-push.outputs.documenso_app_image }} \
-            -n sign
-
       - name: Deploy token-exchange
-        if: ${{ !inputs.app_only || inputs.exchange_only }}
         run: |
           kubectl set image deployment/token-exchange \
             token-exchange=${{ needs.build-and-push.outputs.token_exchange_image }} \
