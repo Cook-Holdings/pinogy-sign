@@ -409,8 +409,18 @@ export type CreateTemplateFieldInput = {
 };
 
 /**
+ * Normalize placeholder so PDFs with either "{{signature}}" or "{{signature, r1}}" work.
+ * Documenso searches the PDF for the exact string; backend often uses the short form.
+ * Recipient is already specified by recipientId, so ", r1" is only for display.
+ */
+function normalizePlaceholderForPdf(placeholder: string): string {
+  return placeholder.replace(/,\s*r\d+\s*(?=\}\})/i, '').trim();
+}
+
+/**
  * Add fields to a template via Documenso template/field/create-many.
- * Use placeholder positioning (e.g. "{{signature, r1}}") so the template is ready without authoring UI.
+ * Use placeholder positioning (e.g. "{{signature, r1}}" or "{{signature}}"). Placeholders
+ * are normalized so "{{signature, r1}}" is sent as "{{signature}}" to match PDFs that omit ", r1".
  */
 export async function createTemplateFields(
   apiKey: string,
@@ -423,7 +433,7 @@ export async function createTemplateFields(
       return {
         recipientId: f.recipientId,
         type: f.type,
-        placeholder: f.placeholder,
+        placeholder: normalizePlaceholderForPdf(f.placeholder),
         width: f.width,
         height: f.height,
         matchAll: false,
