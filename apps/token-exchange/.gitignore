@@ -1,0 +1,14 @@
+# deps
+/node_modules
+
+# build
+/.next/
+/out/
+*.tsbuildinfo
+
+# Next.js generated (created on build/dev)
+next-env.d.ts
+
+# misc
+.env*.local
+.DS_Store
