@@ -9,7 +9,7 @@ export const validateCheckboxField = (
   fieldMeta: TCheckboxFieldMeta,
   isSigningPage: boolean = false,
 ): string[] => {
-  const errors = [];
+  const errors: string[] = [];
 
   const { readOnly, required, validationRule, validationLength } = fieldMeta;
 

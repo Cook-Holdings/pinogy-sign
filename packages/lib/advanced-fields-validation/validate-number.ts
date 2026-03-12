@@ -7,7 +7,7 @@ export const validateNumberField = (
   fieldMeta?: NumberFieldMeta,
   isSigningPage: boolean = false,
 ): string[] => {
-  const errors = [];
+  const errors: string[] = [];
 
   const { minValue, maxValue, readOnly, required, numberFormat, fontSize } = fieldMeta || {};
 

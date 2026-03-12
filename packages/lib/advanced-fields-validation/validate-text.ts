@@ -5,7 +5,7 @@ export const validateTextField = (
   fieldMeta: TextFieldMeta,
   isSigningPage: boolean = false,
 ): string[] => {
-  const errors = [];
+  const errors: string[] = [];
 
   const { characterLimit, readOnly, required, fontSize } = fieldMeta;
 

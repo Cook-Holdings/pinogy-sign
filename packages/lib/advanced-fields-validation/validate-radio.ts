@@ -5,7 +5,7 @@ export const validateRadioField = (
   fieldMeta: RadioFieldMeta,
   isSigningPage: boolean = false,
 ): string[] => {
-  const errors = [];
+  const errors: string[] = [];
 
   const { readOnly, required, values } = fieldMeta;
 

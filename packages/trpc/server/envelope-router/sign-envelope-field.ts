@@ -186,8 +186,8 @@ export const signEnvelopeFieldRoute = procedure
 
     const assistant = recipient.role === RecipientRole.ASSISTANT ? recipient : undefined;
 
-    let signatureImageAsBase64 = null;
-    let typedSignature = null;
+    let signatureImageAsBase64: string | null = null;
+    let typedSignature: string | null = null;
 
     if (field.type === FieldType.SIGNATURE) {
       if (fieldValue.type !== FieldType.SIGNATURE) {

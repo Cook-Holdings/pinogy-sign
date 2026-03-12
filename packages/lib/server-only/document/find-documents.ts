@@ -118,7 +118,7 @@ export const findDocuments = async ({
     select: { id: true, email: true, name: true },
   });
 
-  let team = null;
+  let team: Awaited<ReturnType<typeof getTeamById>> | null = null;
 
   if (teamId !== undefined) {
     team = await getTeamById({ userId, teamId });

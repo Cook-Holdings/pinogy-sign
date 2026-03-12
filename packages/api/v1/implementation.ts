@@ -33,6 +33,7 @@ import { getTemplateById } from '@documenso/lib/server-only/template/get-templat
 import { ZRecipientAuthOptionsSchema } from '@documenso/lib/types/document-auth';
 import { extractDerivedDocumentEmailSettings } from '@documenso/lib/types/document-email';
 import {
+  type TFieldMetaSchema,
   ZCheckboxFieldMeta,
   ZDropdownFieldMeta,
   ZFieldMetaSchema,
@@ -139,7 +140,7 @@ export const ApiContractV1Implementation = tsr.router(ApiContractV1, {
       const { fields, recipients } = envelope;
 
       const parsedMetaFields = fields.map((field) => {
-        let parsedMetaOrNull = null;
+        let parsedMetaOrNull: TFieldMetaSchema | null = null;
 
         if (field.fieldMeta) {
           const result = ZFieldMetaSchema.safeParse(field.fieldMeta);

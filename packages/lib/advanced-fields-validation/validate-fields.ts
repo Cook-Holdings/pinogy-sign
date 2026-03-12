@@ -8,7 +8,7 @@ import type {
 export const validateFields = (
   fieldMeta: DateFieldMeta | EmailFieldMeta | InitialsFieldMeta | NameFieldMeta,
 ): string[] => {
-  const errors = [];
+  const errors: string[] = [];
   const { fontSize } = fieldMeta;
 
   if (fontSize && (fontSize < 8 || fontSize > 96)) {

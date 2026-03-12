@@ -6,7 +6,7 @@ export const validateDropdownField = (
   isSigningPage: boolean = false,
   fontSize?: number,
 ): string[] => {
-  const errors = [];
+  const errors: string[] = [];
 
   const { readOnly, required, values, defaultValue } = fieldMeta;
 

@@ -57,8 +57,12 @@ export const BillingPlans = ({ plans }: BillingPlansProps) => {
 
   const isPersonalLayoutMode = isPersonalLayout(organisations);
 
+  type PriceDisplay = NonNullable<InternalClaimPlans[INTERNAL_CLAIM_ID][typeof interval]> & {
+    memberCount: number;
+    claim: string;
+  };
   const pricesToDisplay = useMemo(() => {
-    const prices = [];
+    const prices: PriceDisplay[] = [];
 
     for (const plan of Object.values(plans)) {
       if (plan[interval] && plan[interval].isVisibleInApp) {
