@@ -25,9 +25,10 @@ export const ZOrganisationNameSchema = z
 
 /**
  * Metadata stored in verification token for organisation SSO account link flow.
+ * type: 'link' = link existing account; 'create' = create new account.
  */
 export const ZOrganisationAccountLinkMetadataSchema = z.object({
-  type: z.literal('organisation'),
+  type: z.enum(['link', 'create']),
   userId: z.number(),
   organisationId: z.string(),
   oauthConfig: z.object({

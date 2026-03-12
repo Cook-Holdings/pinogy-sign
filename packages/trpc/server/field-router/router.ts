@@ -430,11 +430,17 @@ export const fieldRouter = router({
             matchAll: field.matchAll,
           };
         }
+        const positionField = field as {
+          pageNumber: number;
+          pageX: number;
+          pageY: number;
+          [key: string]: unknown;
+        };
         return {
           ...field,
-          page: field.pageNumber,
-          positionX: field.pageX,
-          positionY: field.pageY,
+          page: positionField.pageNumber,
+          positionX: positionField.pageX,
+          positionY: positionField.pageY,
         };
       });
 

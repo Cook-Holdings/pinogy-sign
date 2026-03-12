@@ -17,6 +17,7 @@ import { createPublicEnv } from '@documenso/lib/utils/env';
 import { extractLocaleData } from '@documenso/lib/utils/i18n';
 import { TrpcProvider } from '@documenso/trpc/react';
 import { getOrganisationSession } from '@documenso/trpc/server/organisation-router/get-organisation-session';
+import type { TGetOrganisationSessionResponse } from '@documenso/trpc/server/organisation-router/get-organisation-session.types';
 import { Toaster } from '@documenso/ui/primitives/toaster';
 import { TooltipProvider } from '@documenso/ui/primitives/tooltip';
 
@@ -56,7 +57,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const disableAnimations = cookieHeader.includes('__disable_animations=true');
 
-  let organisations = null;
+  let organisations: TGetOrganisationSessionResponse | null = null;
 
   if (session.isAuthenticated) {
     organisations = await getOrganisationSession({ userId: session.user.id });
@@ -71,7 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? {
             user: session.user,
             session: session.session,
-            organisations: organisations || [],
+            organisations: organisations ?? [],
           }
         : null,
       publicEnv: createPublicEnv(),
