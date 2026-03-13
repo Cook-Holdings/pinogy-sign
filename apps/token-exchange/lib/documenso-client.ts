@@ -400,6 +400,7 @@ export type CreateTemplateFieldInput = {
   recipientId: number;
   type: string;
   placeholder?: string;
+  matchAll?: boolean;
   page?: number;
   positionX?: number;
   positionY?: number;
@@ -436,7 +437,7 @@ export async function createTemplateFields(
         placeholder: normalizePlaceholderForPdf(f.placeholder),
         width: f.width,
         height: f.height,
-        matchAll: false,
+        matchAll: f.matchAll ?? true,
         ...(f.fieldMeta ? { fieldMeta: f.fieldMeta } : {}),
       };
     }

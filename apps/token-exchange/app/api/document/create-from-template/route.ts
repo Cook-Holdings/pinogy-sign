@@ -37,7 +37,8 @@ const DEFAULT_PLACEHOLDER_FIELDS = [
  *
  * Auth: Bearer TOKEN_EXCHANGE_SECRET. X-Documenso-API-Key or apiKey query (required).
  * Body (JSON): templateId (number), recipientEmail (string), recipientName?, title?, placeholders?
- *   placeholders: optional array of { placeholder: string, type: string }. Types: SIGNATURE, DATE, INITIALS, NAME, etc.
+ *   placeholders: optional array of { placeholder: string, type: string, matchAll?: boolean }. Types: SIGNATURE, DATE, INITIALS, NAME, etc.
+ *   matchAll: when true (default), creates a field at every occurrence of the placeholder in the PDF (e.g. 4 signature fields on 4 pages).
  *   Defaults to [{{signature, r1}}]. Add {{date, r1}}, {{initials, r1}}, or {{name, r1}} in placeholders if your PDF has them.
  *
  * Success: { envelopeId, signingUrl, signingToken }
@@ -129,14 +130,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const placeholders: Array<{ placeholder: string; type: string }> = (() => {
+  type PlaceholderEntry = { placeholder: string; type: string; matchAll?: boolean };
+  const placeholders: PlaceholderEntry[] = (() => {
     if (Array.isArray(placeholdersRaw) && placeholdersRaw.length > 0) {
       return placeholdersRaw
         .filter(
-          (p): p is { placeholder: string; type: string } =>
+          (p): p is Record<string, unknown> =>
             isRecord(p) && typeof p.placeholder === 'string' && typeof p.type === 'string',
         )
-        .map((p) => ({ placeholder: p.placeholder.trim(), type: p.type.trim() }))
+        .map((p) => ({
+          placeholder: String(p.placeholder).trim(),
+          type: String(p.type).trim(),
+          ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
+        }))
         .filter((p) => p.placeholder.length > 0 && p.type.length > 0);
     }
     return DEFAULT_PLACEHOLDER_FIELDS.map((p) => ({
@@ -173,6 +179,7 @@ export async function POST(request: NextRequest) {
           recipientId: signerId,
           type: p.type,
           placeholder: p.placeholder,
+          ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
         })),
       );
     }
