@@ -78,21 +78,30 @@ export const parseFieldTypeFromPlaceholder = (fieldTypeString: string): FieldTyp
 };
 
 /**
- * When searching the PDF for an INITIALS placeholder, some documents use `{{initial, r1}}`
- * instead of `{{initials, r1}}`. Return strings to try in order (deduped).
+ * When searching the PDF for an INITIALS placeholder:
+ * - `initial` vs `initials` spelling
+ * - PDF may omit `, r1` while the API sends `{{initial, r1}}` (same as extractPlaceholders default).
  */
 export const getInitialsPlaceholderSearchVariants = (placeholder: string): string[] => {
-  const variants: string[] = [placeholder];
-
-  if (/\{\{\s*initials\b/i.test(placeholder)) {
-    variants.push(placeholder.replace(/\{\{\s*initials\b/i, '{{initial'));
+  const withoutRecipient = placeholder.replace(/,\s*r\d+\s*(?=\}\})/i, '').trim();
+  const base = new Set<string>([placeholder]);
+  if (withoutRecipient !== placeholder) {
+    base.add(withoutRecipient);
   }
 
-  if (/\{\{\s*initial\b/i.test(placeholder) && !/\{\{\s*initials\b/i.test(placeholder)) {
-    variants.push(placeholder.replace(/\{\{\s*initial\b/i, '{{initials'));
+  const variants = new Set<string>(base);
+
+  for (const s of base) {
+    if (/\{\{\s*initials\b/i.test(s)) {
+      variants.add(s.replace(/\{\{\s*initials\b/i, '{{initial'));
+    }
+
+    if (/\{\{\s*initial\b/i.test(s) && !/\{\{\s*initials\b/i.test(s)) {
+      variants.add(s.replace(/\{\{\s*initial\b/i, '{{initials'));
+    }
   }
 
-  return [...new Set(variants)];
+  return [...variants];
 };
 
 /*

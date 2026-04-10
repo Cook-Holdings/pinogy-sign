@@ -102,16 +102,21 @@ export const extractPlaceholdersFromPDF = async (pdf: Buffer): Promise<Placehold
       }
 
       /*
-        A recipient identifier (e.g. "r1", "R2") is required for auto-placement.
-        Placeholders without an explicit recipient like {{name}} are reserved for
-        future API use where callers can reference a placeholder by name with
-        optional dimensions instead of absolute coordinates.
+        Recipient segment (e.g. r1, R2) selects which signer. If omitted or empty
+        (e.g. {{initial}}), default to r1 — same as {{initial, r1}} for single-signer flows.
+        A non-empty second segment that is not rN is invalid and skipped.
       */
-      if (!recipientOrMeta || !/^r\d+$/i.test(recipientOrMeta)) {
+      const recipientSegment = recipientOrMeta?.trim() ?? '';
+
+      let recipient: string;
+
+      if (recipientSegment && /^r\d+$/i.test(recipientSegment)) {
+        recipient = recipientSegment;
+      } else if (!recipientSegment) {
+        recipient = 'r1';
+      } else {
         continue;
       }
-
-      const recipient = recipientOrMeta;
 
       const rawFieldMeta = Object.fromEntries(fieldMetaData.map((property) => property.split('=')));
 
