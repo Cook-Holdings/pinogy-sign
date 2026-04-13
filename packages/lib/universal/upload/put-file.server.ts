@@ -1,4 +1,5 @@
 import { PDF } from '@libpdf/core';
+import type { DocumentData } from '@prisma/client';
 import { DocumentDataType } from '@prisma/client';
 import { base64 } from '@scure/base';
 import { match } from 'ts-pattern';
@@ -7,7 +8,10 @@ import { env } from '@documenso/lib/utils/env';
 
 import { AppError } from '../../errors/app-error';
 import { createDocumentData } from '../../server-only/document-data/create-document-data';
-import { extractPdfPlaceholders } from '../../server-only/pdf/auto-place-fields';
+import {
+  type PlaceholderInfo,
+  extractPdfPlaceholders,
+} from '../../server-only/pdf/auto-place-fields';
 import { normalizePdf } from '../../server-only/pdf/normalize-pdf';
 import { uploadS3File } from './server-actions';
 
@@ -51,18 +55,22 @@ export const putPdfFileServerSide = async (file: File, initialData?: string) => 
   return await createDocumentData({ type, data, initialData });
 };
 
+export type NormalizedPdfUploadResult = DocumentData & {
+  placeholders: PlaceholderInfo[];
+};
+
 /**
  * Uploads a pdf file and normalizes it.
  */
 export const putNormalizedPdfFileServerSide = async (
   file: File,
   options: { flattenForm?: boolean } = {},
-) => {
+): Promise<NormalizedPdfUploadResult> => {
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const normalized = await normalizePdf(buffer, options);
 
-  const { cleanedPdf } = await extractPdfPlaceholders(normalized);
+  const { cleanedPdf, placeholders } = await extractPdfPlaceholders(normalized);
 
   const fileName = file.name.endsWith('.pdf') ? file.name : `${file.name}.pdf`;
 
@@ -74,10 +82,15 @@ export const putNormalizedPdfFileServerSide = async (
     },
   });
 
-  return await createDocumentData({
+  const created = await createDocumentData({
     type: documentData.type,
     data: documentData.data,
   });
+
+  return {
+    ...created,
+    placeholders,
+  };
 };
 
 /**
