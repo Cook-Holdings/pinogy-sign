@@ -5,6 +5,8 @@ FROM node:22-alpine3.22 AS base
 
 RUN apk add --no-cache openssl
 RUN apk add --no-cache font-freefont
+# Root package.json requires npm >=11.11.0 (packageManager / engines); base image ships npm 10.x.
+RUN npm install -g npm@11.13.0
 
 
 ###########################
@@ -112,7 +114,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/out/full/packages/tailwind-config
 # Copy the patches across
 COPY --from=builder --chown=nodejs:nodejs /app/patches ./patches
 
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Automatically leverage output traces to reduce image size
 # https://nodejs.org/docs/advanced-features/output-file-tracing
