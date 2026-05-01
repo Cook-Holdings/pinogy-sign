@@ -5,8 +5,10 @@ FROM node:22-alpine3.22 AS base
 
 RUN apk add --no-cache openssl
 RUN apk add --no-cache font-freefont
-# Root package.json requires npm >=11.11.0 (packageManager / engines); base image ships npm 10.x.
-RUN npm install -g npm@11.13.0
+# Root engines require npm >=11.11.0; global `npm i -g npm` on Alpine can break (e.g. missing promise-retry).
+# Corepack installs the requested npm without reusing the bundled global npm tree.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare npm@11.11.0 --activate
 
 
 ###########################
