@@ -4,6 +4,7 @@ import { ZOrganisationSchema } from '@documenso/lib/types/organisation';
 import { OrganisationMemberRole, TeamMemberRole } from '@documenso/prisma/generated/types';
 import OrganisationClaimSchema from '@documenso/prisma/generated/zod/modelSchema/OrganisationClaimSchema';
 import SubscriptionSchema from '@documenso/prisma/generated/zod/modelSchema/SubscriptionSchema';
+import { TeamEmailSchema } from '@documenso/prisma/generated/zod/modelSchema/TeamEmailSchema';
 import TeamSchema from '@documenso/prisma/generated/zod/modelSchema/TeamSchema';
 
 export const ZGetOrganisationSessionResponseSchema = ZOrganisationSchema.extend({
@@ -18,6 +19,7 @@ export const ZGetOrganisationSessionResponseSchema = ZOrganisationSchema.extend(
       organisationId: true,
     }).extend({
       currentTeamRole: z.nativeEnum(TeamMemberRole),
+      teamEmail: TeamEmailSchema.pick({ email: true }).nullable(),
       preferences: z.object({
         aiFeaturesEnabled: z.boolean(),
       }),

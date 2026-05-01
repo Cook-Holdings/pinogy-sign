@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { Trans } from '@lingui/react/macro';
-import type { Field, Recipient } from '@prisma/client';
+import type { Field } from '@prisma/client';
 import { FieldType, RecipientRole, SendStatus } from '@prisma/client';
 import {
   CalendarDays,
@@ -31,6 +31,7 @@ import {
   type TFieldMetaSchema as FieldMeta,
   ZFieldMetaSchema,
 } from '@documenso/lib/types/field-meta';
+import type { TRecipientLite } from '@documenso/lib/types/recipient';
 import { nanoid } from '@documenso/lib/universal/id';
 import { ADVANCED_FIELD_TYPES_WITH_OPTIONAL_SETTING } from '@documenso/lib/utils/advanced-fields-helpers';
 import { parseMessageDescriptor } from '@documenso/lib/utils/i18n';
@@ -57,7 +58,7 @@ import { FRIENDLY_FIELD_TYPE } from '@documenso/ui/primitives/document-flow/type
 import { Popover, PopoverContent, PopoverTrigger } from '@documenso/ui/primitives/popover';
 import { useToast } from '@documenso/ui/primitives/use-toast';
 
-import { getRecipientColorStyles, useRecipientColors } from '../../lib/recipient-colors';
+import { getRecipientColorStyles } from '../../lib/recipient-colors';
 import type { FieldFormType } from '../document-flow/add-fields';
 import { FieldAdvancedSettings } from '../document-flow/field-item-advanced-settings';
 import { Form } from '../form/form';
@@ -75,7 +76,7 @@ const DEFAULT_WIDTH_PX = MIN_WIDTH_PX * 2.5;
 
 export type AddTemplateFieldsFormProps = {
   documentFlow: DocumentFlowStep;
-  recipients: Recipient[];
+  recipients: TRecipientLite[];
   fields: Field[];
   onSubmit: (_data: TAddTemplateFieldsFormSchema) => void;
   onAutoSave: (_data: TAddTemplateFieldsFormSchema) => Promise<void>;
@@ -154,13 +155,11 @@ export const AddTemplateFieldsFormPartial = ({
   });
 
   const [selectedField, setSelectedField] = useState<FieldType | null>(null);
-  const [selectedSigner, setSelectedSigner] = useState<Recipient | null>(null);
+  const [selectedSigner, setSelectedSigner] = useState<TRecipientLite | null>(null);
   const [showRecipientsSelector, setShowRecipientsSelector] = useState(false);
 
   const selectedSignerIndex = recipients.findIndex((r) => r.id === selectedSigner?.id);
-  const selectedSignerStyles = useRecipientColors(
-    selectedSignerIndex === -1 ? 0 : selectedSignerIndex,
-  );
+  const selectedSignerStyles = getRecipientColorStyles(selectedSignerIndex);
 
   const onFieldCopy = useCallback(
     (event?: KeyboardEvent | null, options?: { duplicate?: boolean; duplicateAll?: boolean }) => {
@@ -493,7 +492,7 @@ export const AddTemplateFieldsFormPartial = ({
   }, [recipients]);
 
   const recipientsByRole = useMemo(() => {
-    const recipientsByRole: Record<RecipientRole, Recipient[]> = {
+    const recipientsByRole: Record<RecipientRole, TRecipientLite[]> = {
       CC: [],
       VIEWER: [],
       SIGNER: [],
@@ -522,7 +521,7 @@ export const AddTemplateFieldsFormPartial = ({
 
   const recipientsByRoleToDisplay = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    return (Object.entries(recipientsByRole) as [RecipientRole, Recipient[]][]).filter(
+    return (Object.entries(recipientsByRole) as [RecipientRole, TRecipientLite[]][]).filter(
       ([role]) =>
         role !== RecipientRole.CC &&
         role !== RecipientRole.VIEWER &&
@@ -653,7 +652,7 @@ export const AddTemplateFieldsFormPartial = ({
                     role="combobox"
                     className={cn(
                       'mb-12 mt-2 justify-between bg-background font-normal text-muted-foreground hover:text-foreground',
-                      selectedSignerStyles?.comboxBoxTrigger,
+                      selectedSignerStyles?.comboBoxTrigger,
                     )}
                   >
                     {selectedSigner?.email &&
@@ -710,11 +709,8 @@ export const AddTemplateFieldsFormPartial = ({
                             className={cn(
                               'px-2 last:mb-1 [&:not(:first-child)]:mt-1',
                               getRecipientColorStyles(
-                                Math.max(
-                                  recipients.findIndex((r) => r.id === recipient.id),
-                                  0,
-                                ),
-                              )?.comboxBoxItem,
+                                recipients.findIndex((r) => r.id === recipient.id),
+                              )?.comboBoxItem,
                             )}
                             onSelect={() => {
                               setSelectedSigner(recipient);
