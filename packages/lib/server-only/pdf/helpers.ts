@@ -16,21 +16,18 @@ export const ensureFontLibrary = () => {
   const fontPath = path.join(process.cwd(), 'public/fonts');
 
   if (!FontLibrary.has('Caveat')) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     FontLibrary.use({
       ['Caveat']: [path.join(fontPath, 'caveat.ttf')],
     });
   }
 
   if (!FontLibrary.has('Inter')) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     FontLibrary.use({
       ['Inter']: [path.join(fontPath, 'inter-variablefont_opsz,wght.ttf')],
     });
   }
 
   if (!FontLibrary.has('Noto Sans')) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     FontLibrary.use({
       ['Noto Sans']: [path.join(fontPath, 'noto-sans.ttf')],
       ['Noto Sans Japanese']: [path.join(fontPath, 'noto-sans-japanese.ttf')],
@@ -98,6 +95,31 @@ export const getInitialsPlaceholderSearchVariants = (placeholder: string): strin
 
     if (/\{\{\s*initial\b/i.test(s) && !/\{\{\s*initials\b/i.test(s)) {
       variants.add(s.replace(/\{\{\s*initial\b/i, '{{initials'));
+    }
+  }
+
+  return [...variants];
+};
+
+/**
+ * When searching the PDF for recipient-slot placeholders (signature, date, name, …):
+ * - PDF may use `{{signature}}` while the template API uses `{{signature, r1}}`, or the reverse.
+ * - Try exact text, the form without `, rN`, and (for short `{{name}}` only) `{{name, r1}}`.
+ */
+export const getRecipientSlotPlaceholderSearchVariants = (placeholder: string): string[] => {
+  const trimmed = placeholder.trim();
+  const variants = new Set<string>([trimmed]);
+
+  const withoutRecipient = trimmed.replace(/,\s*r\d+\s*(?=\}\})/i, '').trim();
+  if (withoutRecipient !== trimmed) {
+    variants.add(withoutRecipient);
+  }
+
+  const shortForm = trimmed.match(/^(\{\{)([^,}]+)(\}\})$/);
+  if (shortForm) {
+    const inner = shortForm[2].trim();
+    if (inner.length > 0) {
+      variants.add(`{{${inner}, r1}}`);
     }
   }
 

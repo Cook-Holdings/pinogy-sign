@@ -38,7 +38,7 @@ export const SignFieldSignatureDialog = createCallable<
     const [localSignature, setLocalSignature] = useState(initialSignature);
 
     return (
-      <Dialog open={true} onOpenChange={(value) => (!value ? call.end(null) : null)}>
+      <Dialog modal={false} open={true} onOpenChange={(value) => (!value ? call.end(null) : null)}>
         <DialogContent position="center">
           <div>
             <DialogHeader>

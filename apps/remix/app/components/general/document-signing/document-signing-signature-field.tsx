@@ -270,7 +270,7 @@ export const DocumentSigningSignatureField = ({
         </div>
       )}
 
-      <Dialog open={showSignatureModal} onOpenChange={setShowSignatureModal}>
+      <Dialog modal={false} open={showSignatureModal} onOpenChange={setShowSignatureModal}>
         <DialogContent>
           <DialogTitle>
             <Trans>

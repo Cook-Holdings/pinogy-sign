@@ -52,65 +52,82 @@ export const SignaturePadDialog = ({
         },
       )}
     >
-      {value && (
-        <div className="inset-0 h-full w-full">
+      {value ? (
+        <div className="relative inset-0 h-full w-full">
           <SignatureRender value={value} />
-        </div>
-      )}
-
-      <motion.button
-        data-testid="signature-pad-dialog-button"
-        type="button"
-        disabled={disabled}
-        className="absolute inset-0 flex items-center justify-center bg-transparent"
-        onClick={() => setShowSignatureModal(true)}
-        whileHover="onHover"
-      >
-        {!value && !disableAnimation && (
-          <motion.svg
-            width="120"
-            height="120"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-muted-foreground/60"
-            variants={{
-              onHover: {
-                scale: 1.1,
-                transition: {
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 12,
-                  mass: 0.8,
-                  restDelta: 0.001,
-                },
-              },
-            }}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            data-testid="signature-pad-dialog-change"
+            disabled={disabled}
+            className="pointer-events-auto absolute bottom-1 right-1 z-10 h-8 px-2 text-xs shadow-sm"
+            onClick={() => setShowSignatureModal(true)}
           >
-            <motion.path
-              d="M1.5 11H14.5M1.5 14C1.5 14 8.72 2 4.86938 2H4.875C2.01 2 1.97437 14.0694 8 6.51188V6.5C8 6.5 9 11.3631 11.5 7.52375V7.5C11.5 7.5 11.5 9 14.5 9"
-              stroke="currentColor"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{
-                pathLength: 1,
-                opacity: 1,
-                transition: {
-                  pathLength: {
-                    duration: 2,
-                    ease: 'easeInOut',
+            <Trans>Change</Trans>
+          </Button>
+        </div>
+      ) : null}
+
+      {!value ? (
+        <motion.button
+          data-testid="signature-pad-dialog-button"
+          type="button"
+          disabled={disabled}
+          className="absolute inset-0 flex items-center justify-center bg-transparent"
+          onClick={() => setShowSignatureModal(true)}
+          whileHover="onHover"
+        >
+          {!disableAnimation && (
+            <motion.svg
+              width="120"
+              height="120"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-muted-foreground/60"
+              variants={{
+                onHover: {
+                  scale: 1.1,
+                  transition: {
+                    type: 'spring',
+                    stiffness: 300,
+                    damping: 12,
+                    mass: 0.8,
+                    restDelta: 0.001,
                   },
-                  opacity: { duration: 0.6 },
                 },
               }}
-            />
-          </motion.svg>
-        )}
-      </motion.button>
+            >
+              <motion.path
+                d="M1.5 11H14.5M1.5 14C1.5 14 8.72 2 4.86938 2H4.875C2.01 2 1.97437 14.0694 8 6.51188V6.5C8 6.5 9 11.3631 11.5 7.52375V7.5C11.5 7.5 11.5 9 14.5 9"
+                stroke="currentColor"
+                strokeWidth="1.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{
+                  pathLength: 1,
+                  opacity: 1,
+                  transition: {
+                    pathLength: {
+                      duration: 2,
+                      ease: 'easeInOut',
+                    },
+                    opacity: { duration: 0.6 },
+                  },
+                }}
+              />
+            </motion.svg>
+          )}
+        </motion.button>
+      ) : null}
 
-      <Dialog open={showSignatureModal} onOpenChange={disabled ? undefined : setShowSignatureModal}>
+      <Dialog
+        modal={false}
+        open={showSignatureModal}
+        onOpenChange={disabled ? undefined : setShowSignatureModal}
+      >
         <DialogContent hideClose={true} className="p-6 pt-4">
           <SignaturePad
             id="signature"

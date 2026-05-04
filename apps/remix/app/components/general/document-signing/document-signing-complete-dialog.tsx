@@ -132,19 +132,34 @@ export const DocumentSigningCompleteDialog = ({
   );
 
   const handleOpenChange = (open: boolean) => {
-    if (form.formState.isSubmitting || !isComplete) {
+    if (form.formState.isSubmitting) {
       return;
     }
 
-    if (open) {
-      form.reset({
-        name: defaultNextSigner?.name ?? '',
-        email: defaultNextSigner?.email ?? '',
-      });
+    if (!open) {
+      setShowDialog(false);
+      return;
     }
 
-    setShowDialog(open);
+    if (!isComplete) {
+      return;
+    }
+
+    form.reset({
+      name: defaultNextSigner?.name ?? '',
+      email: defaultNextSigner?.email ?? '',
+    });
+
+    setShowDialog(true);
   };
+
+  const renderPrimaryActionLabel = () =>
+    match({ isComplete, role: recipient.role })
+      .with({ isComplete: false }, () => <Trans>Next Field</Trans>)
+      .with({ isComplete: true, role: RecipientRole.APPROVER }, () => <Trans>Approve</Trans>)
+      .with({ isComplete: true, role: RecipientRole.VIEWER }, () => <Trans>Mark as viewed</Trans>)
+      .with({ isComplete: true }, () => <Trans>Complete</Trans>)
+      .exhaustive();
 
   const onFormSubmit = async (data: TNextSignerFormSchema) => {
     try {
@@ -201,27 +216,28 @@ export const DocumentSigningCompleteDialog = ({
     void form.handleSubmit(onFormSubmit)();
   };
 
+  const primaryButtonProps = {
+    className: 'w-full' as const,
+    type: 'button' as const,
+    size: buttonSize,
+    loading: isSubmitting,
+    disabled,
+    children: renderPrimaryActionLabel(),
+  };
+
+  const onPrimaryFieldsValidated = () => {
+    void fieldsValidated();
+  };
+
   return (
     <Dialog open={showDialog} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          className="w-full"
-          type="button"
-          size={buttonSize}
-          onClick={fieldsValidated}
-          loading={isSubmitting}
-          disabled={disabled}
-        >
-          {match({ isComplete, role: recipient.role })
-            .with({ isComplete: false }, () => <Trans>Next Field</Trans>)
-            .with({ isComplete: true, role: RecipientRole.APPROVER }, () => <Trans>Approve</Trans>)
-            .with({ isComplete: true, role: RecipientRole.VIEWER }, () => (
-              <Trans>Mark as viewed</Trans>
-            ))
-            .with({ isComplete: true }, () => <Trans>Complete</Trans>)
-            .exhaustive()}
-        </Button>
-      </DialogTrigger>
+      {isComplete ? (
+        <DialogTrigger asChild>
+          <Button {...primaryButtonProps} onClick={onPrimaryFieldsValidated} />
+        </DialogTrigger>
+      ) : (
+        <Button {...primaryButtonProps} onClick={onPrimaryFieldsValidated} />
+      )}
 
       <DialogContent position={position}>
         <DialogHeader>
