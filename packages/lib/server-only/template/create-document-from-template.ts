@@ -36,7 +36,7 @@ import { ZCheckboxFieldMeta, ZDropdownFieldMeta, ZFieldMetaSchema, ZRadioFieldMe
 import { mapEnvelopeToWebhookDocumentPayload, ZWebhookDocumentSchema } from '../../types/webhook-payload';
 import type { ApiRequestMetadata } from '../../universal/extract-request-metadata';
 import { getFileServerSide } from '../../universal/upload/get-file.server';
-import { putNormalizedPdfFileServerSide } from '../../universal/upload/put-file.server';
+import { putPdfFileServerSide } from '../../universal/upload/put-file.server';
 import { extractDerivedDocumentMeta } from '../../utils/document';
 import { createDocumentAuditLogData } from '../../utils/document-audit-logs';
 import {
@@ -49,7 +49,9 @@ import { mapSecondaryIdToTemplateId } from '../../utils/envelope';
 import { buildTeamWhereQuery } from '../../utils/teams';
 import { getEnvelopeWhereInput } from '../envelope/get-envelope-by-id';
 import { incrementDocumentId } from '../envelope/increment-id';
+import { extractPdfPlaceholders } from '../pdf/auto-place-fields';
 import { insertFormValuesInPdf } from '../pdf/insert-form-values-in-pdf';
+import { normalizePdf } from '../pdf/normalize-pdf';
 import { getTeamSettings } from '../team/get-team-settings';
 import { triggerWebhook } from '../webhooks/trigger/trigger-webhook';
 import { getOrganisationTemplateWhereInput } from './get-organisation-template-by-id';
@@ -464,31 +466,41 @@ export const createDocumentFromTemplate = async ({
         });
       }
 
-      let buffer = await getFileServerSide(documentDataToDuplicate);
+      let pdfBuffer = Buffer.from(await getFileServerSide(documentDataToDuplicate));
 
       const titleToUse = item.title || finalEnvelopeTitle;
 
       if (formValues) {
         // eslint-disable-next-line require-atomic-updates
-        buffer = await insertFormValuesInPdf({
-          pdf: Buffer.from(buffer),
+        pdfBuffer = await insertFormValuesInPdf({
+          pdf: pdfBuffer,
           formValues,
         });
       }
 
-      const duplicatedFile = await putNormalizedPdfFileServerSide({
-        name: titleToUse,
-        type: 'application/pdf',
-        arrayBuffer: async () => Promise.resolve(buffer),
+      /*
+        Align with v2 envelope create-from-upload (`create-envelope` route): normalize,
+        extract `{{type, rN}}` placeholders, white them out, then persist. The template
+        create API only normalizes PDFs (no placeholder pass), so tokens remain in stored
+        template bytes; duplicating that buffer here used to copy them unchanged into new
+        documents (e.g. token-exchange template → template/use).
+      */
+      const normalized = await normalizePdf(pdfBuffer, {
+        flattenForm: true,
       });
 
-      const newDocumentData = await prisma.documentData.create({
-        data: {
-          type: duplicatedFile.type,
-          data: duplicatedFile.data,
-          initialData: documentDataToDuplicate.data,
+      const { cleanedPdf } = await extractPdfPlaceholders(normalized);
+
+      const pdfFileName = titleToUse.endsWith('.pdf') ? titleToUse : `${titleToUse}.pdf`;
+
+      const { documentData: newDocumentData } = await putPdfFileServerSide(
+        {
+          name: pdfFileName,
+          type: 'application/pdf',
+          arrayBuffer: async () => Promise.resolve(cleanedPdf),
         },
-      });
+        documentDataToDuplicate.data,
+      );
 
       const newEnvelopeItemId = prefixedId('envelope_item');
 
