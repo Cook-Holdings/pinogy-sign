@@ -1,4 +1,5 @@
 import { prisma } from '@documenso/prisma';
+import type { Folder } from '@prisma/client';
 import { TeamMemberRole } from '@prisma/client';
 import { match } from 'ts-pattern';
 
@@ -38,7 +39,7 @@ export const getFolderBreadcrumbs = async ({ userId, teamId, folderId, type }: G
     ],
   });
 
-  const breadcrumbs = [];
+  const breadcrumbs: Folder[] = [];
   let currentFolderId = folderId;
 
   const currentFolder = await prisma.folder.findFirst({

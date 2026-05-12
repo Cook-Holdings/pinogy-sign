@@ -630,16 +630,6 @@ msgstr "{validationLength, plural, one {Sélectionnez exactement # option} other
 msgid "{visibleRows, plural, one {Showing # result.} other {Showing # results.}}"
 msgstr "{visibleRows, plural, one {Affichage de # résultat.} other {Affichage de # résultats.}}"
 
-#: apps/remix/app/components/forms/branding-preferences-form.tsx
-msgid "/* Write CSS targeting your signing pages. Selectors are scoped automatically. */\n"
-".my-button {\n"
-"  background: red;\n"
-"}"
-msgstr "/* Écrivez du CSS pour cibler vos pages de signature. Les sélecteurs sont automatiquement limités à leur portée. */\n"
-".my-button {\n"
-"  background: red;\n"
-"}"
-
 #. placeholder {0}: document.title
 #. placeholder {0}: envelope.title
 #: apps/remix/app/routes/_recipient+/sign.$token+/_index.tsx
@@ -2228,6 +2218,10 @@ msgstr "Couleur d’arrière-plan de base."
 #: apps/remix/app/components/forms/branding-preferences-form.tsx
 msgid "Base text colour."
 msgstr "Couleur de texte de base."
+
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Based on"
+msgstr ""
 
 #: packages/email/template-components/template-confirmation-email.tsx
 msgid "Before you get started, please confirm your email address by clicking the button below:"
@@ -6344,6 +6338,10 @@ msgstr "Paiement de la licence en retard - Veuillez mettre à jour votre paiemen
 msgid "License synced"
 msgstr "Licence synchronisée"
 
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Licensed under"
+msgstr ""
+
 #: apps/remix/app/components/general/app-command-menu.tsx
 msgid "Light Mode"
 msgstr "Mode clair"
@@ -9735,6 +9733,10 @@ msgstr "Désolé, nous n'avons pas pu télécharger le certificat. Veuillez rée
 #: apps/remix/app/components/tables/team-members-table.tsx
 msgid "Source"
 msgstr "Source"
+
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Source code"
+msgstr ""
 
 #: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
 msgid "Space-separated list of domains. Leave empty to allow all domains."
@@ -13784,4 +13786,3 @@ msgstr "Votre code de vérification :"
 #: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
 msgid "your-domain.com another-domain.com"
 msgstr "your-domain.com another-domain.com"
-

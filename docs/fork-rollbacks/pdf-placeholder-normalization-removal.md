@@ -63,3 +63,11 @@ No behavioral changes to routes or client logic as part of this rollback. A **JS
 ## Related internal docs
 
 - `docs/runbooks/api-v2-envelope-item-download.md` — API v2 download runbook (unchanged by this rollback).
+
+## Docker / CI build notes (2026-05-12)
+
+- **Lingui + CSS placeholder:** A `t` macro on the custom CSS `<Textarea>` placeholder (with `.my-button { ... }`) produced **ICU parse errors** in locales such as **zh** and **ko** at `lingui compile` time. Fix: use a plain **English `const` string** for that code sample in `branding-preferences-form.tsx`, then run `npm run translate:extract` (with `--clean` via the root script) so the old `msgid` is removed from catalogs.
+- **`get-folder-breadcrumbs`:** `const breadcrumbs = []` inferred **`never[]`** under strict `tsc`, breaking `push`/`unshift`. Fix: **`const breadcrumbs: Folder[] = []`** with `import type { Folder } from '@prisma/client'`.
+- **Embed authoring mock org:** `OrganisationSession` (from `ZOrganisationSchema` + session fields) does **not** include `organisationClaimId` / `organisationGlobalSettingsId` / `organisationAuthenticationPortalId` on the top-level object; remove those from the mock in `embed+/v2+/authoring+/_layout.tsx` and keep nested **`organisationClaim`** only.
+
+**npm engine:** Root `package.json` may require `npm >= 11.11.0`; Docker images using npm 10 will log `EBADENGINE` — upgrade the install stage image or npm when you want a clean install.

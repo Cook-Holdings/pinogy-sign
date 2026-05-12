@@ -630,16 +630,6 @@ msgstr "{validationLength, plural, one {Wybierz dokładnie # opcję} few {Wybier
 msgid "{visibleRows, plural, one {Showing # result.} other {Showing # results.}}"
 msgstr "{visibleRows, plural, one {# wynik} few {# wyniki} many {# wyników} other {# wyników}}"
 
-#: apps/remix/app/components/forms/branding-preferences-form.tsx
-msgid "/* Write CSS targeting your signing pages. Selectors are scoped automatically. */\n"
-".my-button {\n"
-"  background: red;\n"
-"}"
-msgstr "/* Napisz CSS skierowany do swoich stron podpisywania. Selektory są automatycznie ograniczane (scope’owane). */\n"
-".my-button {\n"
-"  background: red;\n"
-"}"
-
 #. placeholder {0}: document.title
 #. placeholder {0}: envelope.title
 #: apps/remix/app/routes/_recipient+/sign.$token+/_index.tsx
@@ -2228,6 +2218,10 @@ msgstr "Bazowy kolor tła."
 #: apps/remix/app/components/forms/branding-preferences-form.tsx
 msgid "Base text colour."
 msgstr "Bazowy kolor tekstu."
+
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Based on"
+msgstr ""
 
 #: packages/email/template-components/template-confirmation-email.tsx
 msgid "Before you get started, please confirm your email address by clicking the button below:"
@@ -6344,6 +6338,10 @@ msgstr "Zaległa płatność za licencję – Zaktualizuj płatność, aby unikn
 msgid "License synced"
 msgstr "Licencja została zsynchronizowana"
 
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Licensed under"
+msgstr ""
+
 #: apps/remix/app/components/general/app-command-menu.tsx
 msgid "Light Mode"
 msgstr "Tryb jasny"
@@ -9736,6 +9734,10 @@ msgstr "Nie mogliśmy pobrać certyfikatu. Spróbuj ponownie później."
 msgid "Source"
 msgstr "Źródło"
 
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Source code"
+msgstr ""
+
 #: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
 msgid "Space-separated list of domains. Leave empty to allow all domains."
 msgstr "Lista domen oddzielonych spacjami. Pozostaw puste pole, aby zezwolić na wszystkie domeny."
@@ -11033,7 +11035,9 @@ msgstr "Zostanie wysłana do właściciela po zakończeniu dokumentu."
 
 #: packages/ui/components/document/document-email-checkboxes.tsx
 msgid "This will be sent to the document owner when a recipient's signing window has expired."
-msgstr "Zostanie wysłana do właściciela dokumentu, gdy minie czas na podpisanie przez odbiorcę\n"
+msgstr ""
+"Zostanie wysłana do właściciela dokumentu, gdy minie czas na podpisanie przez odbiorcę\n"
+""
 
 #: apps/remix/app/components/tables/organisation-email-domains-table.tsx
 msgid "This will check and sync the status of all email domains for this organisation"
@@ -13784,4 +13788,3 @@ msgstr "Twój kod weryfikacyjny:"
 #: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
 msgid "your-domain.com another-domain.com"
 msgstr "your-domain.com another-domain.com"
-

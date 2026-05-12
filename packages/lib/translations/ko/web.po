@@ -630,16 +630,6 @@ msgstr "{validationLength, plural, other {정확히 #개의 옵션을 선택하�
 msgid "{visibleRows, plural, one {Showing # result.} other {Showing # results.}}"
 msgstr "{visibleRows, plural, other {총 #개 결과 중 표시 중입니다.}}"
 
-#: apps/remix/app/components/forms/branding-preferences-form.tsx
-msgid "/* Write CSS targeting your signing pages. Selectors are scoped automatically. */\n"
-".my-button {\n"
-"  background: red;\n"
-"}"
-msgstr "/* 서명 페이지를 대상으로 하는 CSS를 작성하세요. 선택자는 자동으로 범위가 지정됩니다. */\n"
-".my-button {\n"
-"  background: red;\n"
-"}"
-
 #. placeholder {0}: document.title
 #. placeholder {0}: envelope.title
 #: apps/remix/app/routes/_recipient+/sign.$token+/_index.tsx
@@ -2228,6 +2218,10 @@ msgstr "기본 배경 색상입니다."
 #: apps/remix/app/components/forms/branding-preferences-form.tsx
 msgid "Base text colour."
 msgstr "기본 텍스트 색상입니다."
+
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Based on"
+msgstr ""
 
 #: packages/email/template-components/template-confirmation-email.tsx
 msgid "Before you get started, please confirm your email address by clicking the button below:"
@@ -6344,6 +6338,10 @@ msgstr "라이선스 결제 연체 - 서비스 중단을 방지하려면 결제 
 msgid "License synced"
 msgstr "라이선스가 동기화되었습니다"
 
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Licensed under"
+msgstr ""
+
 #: apps/remix/app/components/general/app-command-menu.tsx
 msgid "Light Mode"
 msgstr "라이트 모드"
@@ -9735,6 +9733,10 @@ msgstr "인증서를 다운로드할 수 없습니다. 나중에 다시 시도�
 #: apps/remix/app/components/tables/team-members-table.tsx
 msgid "Source"
 msgstr "소스"
+
+#: apps/remix/app/components/general/app-footer.tsx
+msgid "Source code"
+msgstr ""
 
 #: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
 msgid "Space-separated list of domains. Leave empty to allow all domains."
@@ -13784,4 +13786,3 @@ msgstr "인증 코드:"
 #: apps/remix/app/routes/_authenticated+/o.$orgUrl.settings.sso.tsx
 msgid "your-domain.com another-domain.com"
 msgstr "your-domain.com another-domain.com"
-

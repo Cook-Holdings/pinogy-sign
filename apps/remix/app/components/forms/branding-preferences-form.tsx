@@ -24,6 +24,15 @@ import { useCspNonce } from '~/utils/nonce';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
+/**
+ * Code sample for the custom CSS field. Intentionally not passed through Lingui:
+ * ICU treats `{` / `}` in translations as syntax, which breaks catalog compilation for locales like zh.
+ */
+const SIGNING_PAGE_CUSTOM_CSS_PLACEHOLDER = `/* Write CSS targeting your signing pages. Selectors are scoped automatically. */
+.my-button {
+  background: red;
+}`;
+
 const ZBrandingPreferencesFormSchema = z.object({
   brandingEnabled: z.boolean().nullable(),
   brandingLogo: z
@@ -512,10 +521,7 @@ export function BrandingPreferencesForm({
                         <FormItem className="flex-1">
                           <FormControl>
                             <Textarea
-                              placeholder={t`/* Write CSS targeting your signing pages. Selectors are scoped automatically. */
-.my-button {
-  background: red;
-}`}
+                              placeholder={SIGNING_PAGE_CUSTOM_CSS_PLACEHOLDER}
                               className="min-h-[200px] font-mono text-xs"
                               {...field}
                               value={field.value ?? ''}
