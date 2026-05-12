@@ -9,6 +9,112 @@ const PLACEHOLDER_PATTERN_SOURCE = String.raw`\{\{([^}]+)\}\}`;
 const DEFAULT_FIELD_HEIGHT_PERCENT = 2;
 const MIN_HEIGHT_THRESHOLD = 0.01;
 
+type LoadedPdf = Awaited<ReturnType<typeof PDF.load>>;
+type PdfPage = ReturnType<LoadedPdf['getPages']>[number];
+type ExtractedTextLine = ReturnType<PdfPage['extractText']>['lines'][number];
+
+const mergeBboxes = (boxes: BoundingBox[]): BoundingBox | null => {
+  if (boxes.length === 0) {
+    return null;
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxR = -Infinity;
+  let maxT = -Infinity;
+
+  for (const b of boxes) {
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxR = Math.max(maxR, b.x + b.width);
+    maxT = Math.max(maxT, b.y + b.height);
+  }
+
+  return { x: minX, y: minY, width: maxR - minX, height: maxT - minY };
+};
+
+/*
+  LibPDF's full-page regex search builds a flat character index map that can miss
+  valid matches (buildMatch returns null) for some PDFs. Per-line extraction uses
+  the same line.text as span char walks, so bbox union stays aligned with matches.
+*/
+const getBboxForLineTextRange = (line: ExtractedTextLine, start: number, end: number): BoundingBox | null => {
+  if (start < 0 || end > line.text.length || start >= end) {
+    return null;
+  }
+
+  let cursor = 0;
+  const boxes: BoundingBox[] = [];
+
+  for (const span of line.spans) {
+    for (const c of span.chars) {
+      const segLen = c.char.length;
+      const segStart = cursor;
+      const segEnd = cursor + segLen;
+
+      if (segEnd > start && segStart < end) {
+        boxes.push(c.bbox);
+      }
+
+      cursor += segLen;
+    }
+  }
+
+  if (cursor !== line.text.length) {
+    return null;
+  }
+
+  return mergeBboxes(boxes);
+};
+
+const placeholderBBoxDedupeKey = (pageIndex: number, text: string, bbox: BoundingBox) =>
+  `${pageIndex}|${text}|${bbox.x.toFixed(2)}|${bbox.y.toFixed(2)}|${bbox.width.toFixed(2)}|${bbox.height.toFixed(2)}`;
+
+const collectPlaceholderBBoxMatches = (page: PdfPage): Array<{ text: string; bbox: BoundingBox }> => {
+  const fromFindText = page.findText(new RegExp(PLACEHOLDER_PATTERN_SOURCE, 'g')).map((m) => ({
+    text: m.text,
+    bbox: m.bbox,
+  }));
+
+  const pageText = page.extractText();
+  const fromLines: Array<{ text: string; bbox: BoundingBox }> = [];
+
+  for (const line of pageText.lines) {
+    const lineRegex = new RegExp(PLACEHOLDER_PATTERN_SOURCE, 'g');
+    let execMatch: RegExpExecArray | null;
+
+    while ((execMatch = lineRegex.exec(line.text)) !== null) {
+      const matchText = execMatch[0];
+      const start = execMatch.index;
+      const end = start + matchText.length;
+      const bbox = getBboxForLineTextRange(line, start, end);
+
+      if (!bbox) {
+        continue;
+      }
+
+      fromLines.push({ text: matchText, bbox });
+    }
+  }
+
+  const merged: Array<{ text: string; bbox: BoundingBox }> = [];
+  const seen = new Set<string>();
+
+  for (const item of [...fromFindText, ...fromLines]) {
+    const text = item.text.trim();
+    const k = placeholderBBoxDedupeKey(page.index, text, item.bbox);
+
+    if (seen.has(k)) {
+      continue;
+    }
+
+    seen.add(k);
+    merged.push({ text, bbox: item.bbox });
+  }
+
+  return merged;
+};
+
 export type BoundingBox = {
   x: number;
   y: number;
@@ -71,7 +177,7 @@ export const extractPlaceholdersFromPDF = async (pdf: Buffer): Promise<Placehold
     const pageWidth = page.width;
     const pageHeight = page.height;
 
-    const matches = page.findText(new RegExp(PLACEHOLDER_PATTERN_SOURCE, 'g'));
+    const matches = collectPlaceholderBBoxMatches(page);
 
     for (const match of matches) {
       const placeholder = match.text.trim();
