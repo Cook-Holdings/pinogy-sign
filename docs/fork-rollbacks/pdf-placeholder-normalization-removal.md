@@ -4,6 +4,18 @@ This note records a deliberate rollback of **Pinogy-specific PDF upload and plac
 
 **Last updated:** 2026-05-12
 
+## Signing / tablet / scroll (restored to upstream)
+
+These **Pinogy UX** tweaks were reverted to match **upstream Documenso** (`upstream/main`):
+
+| Area | File | Former fork behavior (removed) |
+|------|------|----------------------------------|
+| Konva field activation | `apps/remix/app/components/general/envelope-signing/envelope-signer-page-renderer.tsx` | ~400ms dedupe, `tap` + `pointerdown`, `try/finally` around loading spinner during sign |
+| Signature pad | `packages/ui/primitives/signature-pad/signature-pad-dialog.tsx` | “Change” button when value exists; related layout / `data-testid` |
+| Field validation scroll | `packages/lib/utils/fields.ts` | `scrollIntoView` used `behavior: 'auto'` on coarse pointer, mobile UA, or WebView |
+
+Reintroduce from git history if tablets/WebViews regress (double-tap signing, janky scroll-to-field, or no way to replace an existing drawn signature).
+
 ## Scope (what we rolled back)
 
 The following were restored from **upstream `documenso/documenso` main** (same behavior as stock Documenso):

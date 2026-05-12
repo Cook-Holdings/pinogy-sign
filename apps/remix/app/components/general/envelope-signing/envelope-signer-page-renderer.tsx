@@ -154,14 +154,8 @@ export const EnvelopeSignerPageRenderer = ({ pageData }: { pageData: PageRenderD
       mode: 'sign',
     });
 
-    const activationDedupeMs = 400;
-    let lastFieldActivationAt = 0;
-
     const handleFieldGroupClick = (e: KonvaEventObject<Event>) => {
-      // Konva typings expose Node; this handler is only registered on field groups (Group + Shape children).
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Konva event target typing
       const currentTarget = e.currentTarget as Konva.Group;
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Konva event target typing
       const target = e.target as Konva.Shape;
 
       const fieldRect = fieldGroup.findOne('.field-rect');
@@ -371,49 +365,36 @@ export const EnvelopeSignerPageRenderer = ({ pageData }: { pageData: PageRenderD
             typedSignatureEnabled: envelope.documentMeta.typedSignatureEnabled,
             uploadSignatureEnabled: envelope.documentMeta.uploadSignatureEnabled,
             drawSignatureEnabled: envelope.documentMeta.drawSignatureEnabled,
-          }).then(async (payload) => {
-            if (!payload) {
-              return;
-            }
+          })
+            .then(async (payload) => {
+              if (payload) {
+                fieldGroup.add(loadingSpinnerGroup);
 
-            fieldGroup.add(loadingSpinnerGroup);
+                if (payload.value) {
+                  void executeActionAuthProcedure({
+                    onReauthFormSubmit: async (authOptions) => {
+                      await signField(field.id, payload, authOptions);
 
-            try {
-              if (payload.value) {
-                await executeActionAuthProcedure({
-                  onReauthFormSubmit: async (authOptions) => {
-                    await signField(field.id, payload, authOptions);
-                  },
-                  actionTarget: field.type,
-                });
+                      loadingSpinnerGroup.destroy();
+                    },
+                    actionTarget: field.type,
+                  });
 
-                setSignature(payload.value);
-              } else {
-                await signField(field.id, payload);
+                  setSignature(payload.value);
+                } else {
+                  await signField(field.id, payload);
+                }
               }
-            } finally {
+            })
+            .finally(() => {
               loadingSpinnerGroup.destroy();
-            }
-          });
+            });
         })
         .exhaustive();
     };
 
-    const handleFieldGroupActivation = (e: KonvaEventObject<Event>) => {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-
-      if (now - lastFieldActivationAt < activationDedupeMs) {
-        return;
-      }
-
-      lastFieldActivationAt = now;
-      handleFieldGroupClick(e);
-    };
-
     fieldGroup.off('pointerdown');
-    fieldGroup.off('tap');
-    fieldGroup.on('pointerdown', handleFieldGroupActivation);
-    fieldGroup.on('tap', handleFieldGroupActivation);
+    fieldGroup.on('pointerdown', handleFieldGroupClick);
   };
 
   const renderFieldOnLayer = (unparsedField: Field & { signature?: Signature | null }) => {

@@ -6,35 +6,6 @@ import { type Envelope, type Field, FieldType } from '@prisma/client';
 import { extractLegacyIds } from '../universal/id';
 
 /**
- * Coarse pointers and in-app WebViews often handle `scrollIntoView({ behavior: 'smooth' })`
- * poorly (janky UI, missed scroll completion). Prefer instant scroll there.
- */
-const scrollIntoViewBehaviorForFieldValidation = (): ScrollBehavior => {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-    return 'smooth';
-  }
-
-  try {
-    if (window.matchMedia('(pointer: coarse)').matches) {
-      return 'auto';
-    }
-  } catch {
-    // matchMedia unavailable (e.g. some test environments)
-  }
-
-  const ua = navigator.userAgent;
-  if (/Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua)) {
-    return 'auto';
-  }
-
-  if (/\bwv\b|WebView/i.test(ua)) {
-    return 'auto';
-  }
-
-  return 'smooth';
-};
-
-/**
  * Sort the fields by the Y position on the document.
  */
 export const sortFieldsByPosition = (fields: Field[]): Field[] => {
@@ -80,10 +51,7 @@ export const validateFieldsInserted = (fields: Field[]): boolean => {
     const firstUninsertedFieldElement = document.getElementById(`field-${firstUninsertedField.id}`);
 
     if (firstUninsertedFieldElement) {
-      firstUninsertedFieldElement.scrollIntoView({
-        behavior: scrollIntoViewBehaviorForFieldValidation(),
-        block: 'center',
-      });
+      firstUninsertedFieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
       // Field not in DOM (page virtualized away) — signal the PDF viewer to
       // scroll to the correct page via the data attribute.
@@ -105,8 +73,8 @@ export const validateFieldsUninserted = (): boolean => {
     const innerDiv = element.querySelector('div');
     const hasError = innerDiv?.getAttribute('data-error') === 'true';
 
-    if (hasError && element instanceof HTMLElement) {
-      errorElements.push(element);
+    if (hasError) {
+      errorElements.push(element as HTMLElement);
     } else {
       element.removeAttribute('data-error');
     }
