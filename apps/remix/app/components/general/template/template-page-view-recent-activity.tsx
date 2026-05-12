@@ -1,13 +1,12 @@
+import { trpc } from '@documenso/trpc/react';
+import { cn } from '@documenso/ui/lib/utils';
+import { Button } from '@documenso/ui/primitives/button';
 import { Trans } from '@lingui/react/macro';
 import { DocumentSource } from '@prisma/client';
 import { Loader } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { Link } from 'react-router';
 import { match } from 'ts-pattern';
-
-import { trpc } from '@documenso/trpc/react';
-import { cn } from '@documenso/ui/lib/utils';
-import { Button } from '@documenso/ui/primitives/button';
 
 export type TemplatePageViewRecentActivityProps = {
   templateId: number;
@@ -55,7 +54,7 @@ export const TemplatePageViewRecentActivity = ({
           </p>
           <button
             onClick={async () => refetch()}
-            className="mt-2 text-sm text-foreground/70 hover:text-muted-foreground"
+            className="mt-2 text-foreground/70 text-sm hover:text-muted-foreground"
           >
             <Trans>Click here to retry</Trans>
           </button>
@@ -67,7 +66,7 @@ export const TemplatePageViewRecentActivity = ({
           <ul role="list" className="space-y-6 p-4">
             {data.data.length > 0 && results.totalPages > 1 && (
               <li className="relative flex gap-x-4">
-                <div className="absolute -bottom-6 left-0 top-0 flex w-6 justify-center">
+                <div className="absolute top-0 -bottom-6 left-0 flex w-6 justify-center">
                   <div className="w-px bg-border" />
                 </div>
 
@@ -82,7 +81,7 @@ export const TemplatePageViewRecentActivity = ({
                       behavior: 'smooth',
                     });
                   }}
-                  className="flex items-center text-xs text-foreground/70 hover:text-muted-foreground"
+                  className="flex items-center text-foreground/70 text-xs hover:text-muted-foreground"
                 >
                   <Trans>View more</Trans>
                 </button>
@@ -102,7 +101,7 @@ export const TemplatePageViewRecentActivity = ({
                 <div
                   className={cn(
                     documentIndex === results.data.length - 1 ? 'h-6' : '-bottom-6',
-                    'absolute left-0 top-0 flex w-6 justify-center',
+                    'absolute top-0 left-0 flex w-6 justify-center',
                   )}
                 >
                   <div className="w-px bg-border" />
@@ -114,7 +113,7 @@ export const TemplatePageViewRecentActivity = ({
 
                 <Link
                   to={`${documentRootPath}/${document.envelopeId}`}
-                  className="flex-auto truncate py-0.5 text-xs leading-5 text-muted-foreground dark:text-muted-foreground/70"
+                  className="flex-auto truncate py-0.5 text-muted-foreground text-xs leading-5 dark:text-muted-foreground/70"
                 >
                   {match(document.source)
                     .with(DocumentSource.DOCUMENT, DocumentSource.TEMPLATE, () => (
@@ -130,7 +129,7 @@ export const TemplatePageViewRecentActivity = ({
                     .otherwise(() => null)}
                 </Link>
 
-                <time className="flex-none py-0.5 text-xs leading-5 text-muted-foreground dark:text-muted-foreground/70">
+                <time className="flex-none py-0.5 text-muted-foreground text-xs leading-5 dark:text-muted-foreground/70">
                   {DateTime.fromJSDate(document.createdAt).toRelative({ style: 'short' })}
                 </time>
               </li>

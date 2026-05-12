@@ -1,10 +1,9 @@
+import { env } from '@documenso/lib/utils/env';
 import { PDF } from '@libpdf/core';
 import type { DocumentData } from '@prisma/client';
 import { DocumentDataType } from '@prisma/client';
 import { base64 } from '@scure/base';
 import { match } from 'ts-pattern';
-
-import { env } from '@documenso/lib/utils/env';
 
 import { AppError } from '../../errors/app-error';
 import { createDocumentData } from '../../server-only/document-data/create-document-data';
