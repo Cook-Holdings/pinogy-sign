@@ -2,14 +2,7 @@ import OrganisationClaimSchema from '@documenso/prisma/generated/zod/modelSchema
 import { OrganisationSchema } from '@documenso/prisma/generated/zod/modelSchema/OrganisationSchema';
 import { z } from 'zod';
 
-/**
- * Shared organisation name validation.
- * Used by subscription metadata, create-organisation, admin organisation routes, and TRPC types.
- */
-export const ZOrganisationNameSchema = z
-  .string()
-  .min(3, { message: 'Minimum 3 characters' })
-  .max(50, { message: 'Maximum 50 characters' });
+export { ZOrganisationNameSchema } from './organisation-name';
 
 export const ZOrganisationSchema = OrganisationSchema.pick({
   id: true,

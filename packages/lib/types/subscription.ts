@@ -1,4 +1,4 @@
-import { ZOrganisationNameSchema } from '@documenso/lib/types/organisation';
+import { ZOrganisationNameSchema } from '@documenso/lib/types/organisation-name';
 import type { SubscriptionClaim } from '@prisma/client';
 import { z } from 'zod';
 
