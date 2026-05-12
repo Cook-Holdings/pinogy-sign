@@ -23,7 +23,7 @@ function getApiKey(req: NextRequest): string | null {
   return url.searchParams.get('apiKey');
 }
 
-/** Default placeholders to add when configuring a template so it's ready to sign. Date is optional. */
+/** Default placeholders to add when configuring a template so it's ready to sign. */
 const DEFAULT_PLACEHOLDER_FIELDS = [
   { placeholder: '{{signature, r1}}', type: 'SIGNATURE' },
 ] as const;
@@ -39,7 +39,10 @@ const DEFAULT_PLACEHOLDER_FIELDS = [
  * Body (JSON): templateId (number), recipientEmail (string), recipientName?, title?, placeholders?
  *   placeholders: optional array of { placeholder: string, type: string, matchAll?: boolean }. Types: SIGNATURE, DATE, INITIALS, NAME, etc.
  *   matchAll: when true (default), creates a field at every occurrence of the placeholder in the PDF (e.g. 4 signature fields on 4 pages).
- *   Defaults to [{{signature, r1}}]. Add {{date, r1}}, {{initials, r1}} (or {{initial, r1}}), or {{name, r1}} in placeholders if your PDF has them.
+ *   Defaults to [{{signature, r1}}]. When you omit `placeholders`, a second best-effort
+ *   pass adds {{initials, r1}} (INITIALS, matchAll) if that text exists in the PDF.
+ *   Otherwise pass `placeholders` explicitly (e.g. include INITIALS or omit it on purpose).
+ *   Add {{date, r1}}, {{name, r1}}, etc. in `placeholders` when needed.
  *
  * Success: { envelopeId, signingUrl, signingToken }
  */
@@ -131,6 +134,10 @@ export async function POST(request: NextRequest) {
   }
 
   type PlaceholderEntry = { placeholder: string; type: string; matchAll?: boolean };
+
+  const usedBuiltInDefaultPlaceholders =
+    !Array.isArray(placeholdersRaw) || placeholdersRaw.length === 0;
+
   const placeholders: PlaceholderEntry[] = (() => {
     if (Array.isArray(placeholdersRaw) && placeholdersRaw.length > 0) {
       return placeholdersRaw
@@ -182,6 +189,27 @@ export async function POST(request: NextRequest) {
           ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
         })),
       );
+    }
+
+    /*
+      Default list is signature-only. Document-from-template now whiteouts every
+      {{initials, r1}} in the PDF; without template INITIALS fields, signers see blanks
+      and cannot complete initials. When callers omit `placeholders`, try adding
+      INITIALS at all occurrences; ignore if the PDF has no such token.
+    */
+    if (usedBuiltInDefaultPlaceholders) {
+      try {
+        await createTemplateFields(apiKey.trim(), templateId, [
+          {
+            recipientId: signerId,
+            type: 'INITIALS',
+            placeholder: '{{initials, r1}}',
+            matchAll: true,
+          },
+        ]);
+      } catch {
+        // PDF has no {{initials, r1}} — nothing to do
+      }
     }
 
     const result = await createEnvelope(apiKey.trim(), String(templateId), {
