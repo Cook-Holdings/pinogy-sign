@@ -71,3 +71,9 @@ No behavioral changes to routes or client logic as part of this rollback. A **JS
 - **Embed authoring mock org:** `OrganisationSession` (from `ZOrganisationSchema` + session fields) does **not** include `organisationClaimId` / `organisationGlobalSettingsId` / `organisationAuthenticationPortalId` on the top-level object; remove those from the mock in `embed+/v2+/authoring+/_layout.tsx` and keep nested **`organisationClaim`** only.
 
 **npm engine:** Root `package.json` may require `npm >= 11.11.0`; Docker images using npm 10 will log `EBADENGINE` — upgrade the install stage image or npm when you want a clean install.
+
+### `Dockerfile.token-exchange` — Prisma client before `next build`
+
+`npm ci` runs **before** `COPY out/full/`, so `prisma generate` in `@documenso/prisma` postinstall often runs **without** `schema.prisma`. The client can omit newer fields (e.g. `brandingColors`), and **`next build`** then typechecks `packages/lib` and fails.
+
+**Fix:** run `npx prisma generate --schema ./packages/prisma/schema.prisma` **after** copying `out/full/` and **before** `turbo run build --filter=@documenso/token-exchange`.
