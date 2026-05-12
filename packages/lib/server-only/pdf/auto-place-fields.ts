@@ -4,7 +4,8 @@ import type { FieldType, Recipient } from '@prisma/client';
 
 import { parseFieldMetaFromPlaceholder, parseFieldTypeFromPlaceholder } from './helpers';
 
-const PLACEHOLDER_REGEX = /\{\{([^}]+)\}\}/g;
+/** Pattern only — use `new RegExp(..., 'g')` per page so `lastIndex` does not skip matches on later pages. */
+const PLACEHOLDER_PATTERN_SOURCE = String.raw`\{\{([^}]+)\}\}`;
 const DEFAULT_FIELD_HEIGHT_PERCENT = 2;
 const MIN_HEIGHT_THRESHOLD = 0.01;
 
@@ -70,10 +71,10 @@ export const extractPlaceholdersFromPDF = async (pdf: Buffer): Promise<Placehold
     const pageWidth = page.width;
     const pageHeight = page.height;
 
-    const matches = page.findText(PLACEHOLDER_REGEX);
+    const matches = page.findText(new RegExp(PLACEHOLDER_PATTERN_SOURCE, 'g'));
 
     for (const match of matches) {
-      const placeholder = match.text;
+      const placeholder = match.text.trim();
 
       /*
         Extract the inner content from the placeholder match.
