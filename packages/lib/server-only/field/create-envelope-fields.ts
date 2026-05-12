@@ -6,7 +6,7 @@ import { putPdfFileServerSide } from '@documenso/lib/universal/upload/put-file.s
 import { createDocumentAuditLogData } from '@documenso/lib/utils/document-audit-logs';
 import { prisma } from '@documenso/prisma';
 import { PDF } from '@libpdf/core';
-import { EnvelopeType, FieldType } from '@prisma/client';
+import { EnvelopeType } from '@prisma/client';
 
 import { AppError, AppErrorCode } from '../../errors/app-error';
 import type { EnvelopeIdOptions } from '../../utils/envelope';
@@ -14,10 +14,6 @@ import { mapFieldToLegacyField } from '../../utils/fields';
 import { canRecipientFieldsBeModified } from '../../utils/recipients';
 import { getEnvelopeWhereInput } from '../envelope/get-envelope-by-id';
 import { type BoundingBox, whiteoutRegions } from '../pdf/auto-place-fields';
-import {
-  getInitialsPlaceholderSearchVariants,
-  getRecipientSlotPlaceholderSearchVariants,
-} from '../pdf/helpers';
 
 type CoordinatePosition = {
   page: number;
@@ -180,22 +176,7 @@ export const createEnvelopeFields = async ({
         });
       }
 
-      const recipientSlotPlaceholderTypes = new Set<FieldType>([
-        FieldType.SIGNATURE,
-        FieldType.FREE_SIGNATURE,
-        FieldType.DATE,
-        FieldType.NAME,
-        FieldType.EMAIL,
-      ]);
-
-      const searchStrings =
-        field.type === FieldType.INITIALS
-          ? getInitialsPlaceholderSearchVariants(field.placeholder)
-          : recipientSlotPlaceholderTypes.has(field.type)
-            ? getRecipientSlotPlaceholderSearchVariants(field.placeholder)
-            : [field.placeholder];
-
-      const matches = searchStrings.flatMap((s) => pdfDoc.findText(s));
+      const matches = pdfDoc.findText(field.placeholder);
 
       if (matches.length === 0) {
         throw new AppError(AppErrorCode.INVALID_BODY, {

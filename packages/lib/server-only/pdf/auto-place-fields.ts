@@ -4,8 +4,7 @@ import type { FieldType, Recipient } from '@prisma/client';
 
 import { parseFieldMetaFromPlaceholder, parseFieldTypeFromPlaceholder } from './helpers';
 
-/** Pattern only — use `new RegExp(..., 'g')` per page so `lastIndex` does not skip matches on later pages. */
-const PLACEHOLDER_PATTERN_SOURCE = String.raw`\{\{([^}]+)\}\}`;
+const PLACEHOLDER_REGEX = /\{\{([^}]+)\}\}/g;
 const DEFAULT_FIELD_HEIGHT_PERCENT = 2;
 const MIN_HEIGHT_THRESHOLD = 0.01;
 
@@ -71,10 +70,10 @@ export const extractPlaceholdersFromPDF = async (pdf: Buffer): Promise<Placehold
     const pageWidth = page.width;
     const pageHeight = page.height;
 
-    const matches = page.findText(new RegExp(PLACEHOLDER_PATTERN_SOURCE, 'g'));
+    const matches = page.findText(PLACEHOLDER_REGEX);
 
     for (const match of matches) {
-      const placeholder = match.text.trim();
+      const placeholder = match.text;
 
       /*
         Extract the inner content from the placeholder match.
@@ -99,21 +98,16 @@ export const extractPlaceholdersFromPDF = async (pdf: Buffer): Promise<Placehold
       }
 
       /*
-        Recipient segment (e.g. r1, R2) selects which signer. If omitted or empty
-        (e.g. {{initial}}), default to r1 — same as {{initial, r1}} for single-signer flows.
-        A non-empty second segment that is not rN is invalid and skipped.
+        A recipient identifier (e.g. "r1", "R2") is required for auto-placement.
+        Placeholders without an explicit recipient like {{name}} are reserved for
+        future API use where callers can reference a placeholder by name with
+        optional dimensions instead of absolute coordinates.
       */
-      const recipientSegment = recipientOrMeta?.trim() ?? '';
-
-      let recipient: string;
-
-      if (recipientSegment && /^r\d+$/i.test(recipientSegment)) {
-        recipient = recipientSegment;
-      } else if (!recipientSegment) {
-        recipient = 'r1';
-      } else {
+      if (!recipientOrMeta || !/^r\d+$/i.test(recipientOrMeta)) {
         continue;
       }
+
+      const recipient = recipientOrMeta;
 
       const rawFieldMeta = Object.fromEntries(fieldMetaData.map((property) => property.split('=')));
 

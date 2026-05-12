@@ -44,10 +44,7 @@ const ZCreateTemplateFieldPlaceholderSchema = ZFieldAndMetaSchema.and(
   }),
 );
 
-const ZCreateTemplateFieldSchema = z.union([
-  ZCreateFieldSchema,
-  ZCreateTemplateFieldPlaceholderSchema,
-]);
+const ZCreateTemplateFieldSchema = z.union([ZCreateFieldSchema, ZCreateTemplateFieldPlaceholderSchema]);
 
 const ZUpdateFieldSchema = ZFieldAndMetaSchema.and(
   z.object({

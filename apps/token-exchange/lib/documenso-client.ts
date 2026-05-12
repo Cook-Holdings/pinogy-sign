@@ -411,9 +411,8 @@ export type CreateTemplateFieldInput = {
 
 /**
  * Add fields to a template via Documenso template/field/create-many.
- * Use placeholder positioning (e.g. "{{signature, r1}}" or "{{signature}}").
- * Documenso resolves placeholders against the PDF using search variants for
- * recipient-slot field types (see getRecipientSlotPlaceholderSearchVariants).
+ * Use placeholder positioning (e.g. "{{signature, r1}}" or "{{signature}}") or page coordinates.
+ * Placeholder strings must match text in the PDF exactly (Documenso uses PDF text search).
  */
 export async function createTemplateFields(
   apiKey: string,

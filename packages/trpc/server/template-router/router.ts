@@ -269,12 +269,9 @@ export const templateRouter = router({
         attachments,
       } = payload;
 
-      const { id: templateDocumentDataId, placeholders } = await putNormalizedPdfFileServerSide(
-        file,
-        {
-          flattenForm: false,
-        },
-      );
+      const { id: templateDocumentDataId } = await putNormalizedPdfFileServerSide(file, {
+        flattenForm: false,
+      });
 
       ctx.logger.info({
         input: {
@@ -292,7 +289,6 @@ export const templateRouter = router({
           envelopeItems: [
             {
               documentDataId: templateDocumentDataId,
-              placeholders,
             },
           ],
           folderId,
