@@ -77,3 +77,7 @@ No behavioral changes to routes or client logic as part of this rollback. A **JS
 `npm ci` runs **before** `COPY out/full/`, so `prisma generate` in `@documenso/prisma` postinstall often runs **without** `schema.prisma`. The client can omit newer fields (e.g. `brandingColors`), and **`next build`** then typechecks `packages/lib` and fails.
 
 **Fix:** run `npx prisma generate --schema ./packages/prisma/schema.prisma` **after** copying `out/full/` and **before** `turbo run build --filter=@documenso/token-exchange`.
+
+### `packages/lib` must not import `@documenso/trpc` (pruned token-exchange image)
+
+`turbo prune --scope=@documenso/token-exchange` does **not** include `packages/trpc`. Any `import … from '@documenso/trpc/…'` under `packages/lib` breaks **`next build`** typecheck (e.g. `subscription.ts` importing `create-organisation.types`). **Fix:** define shared Zod (e.g. `ZOrganisationNameSchema`) in `@documenso/lib/types/organisation` and re-export from TRPC types files only for route consumers.

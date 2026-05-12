@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+import { ZOrganisationNameSchema } from '@documenso/lib/types/organisation';
+
+// Re-export for consumers that import from this file (admin router, etc.)
+export { ZOrganisationNameSchema };
+
 // export const createOrganisationMeta: TrpcOpenApiMeta = {
 //   openapi: {
 //     method: 'POST',
@@ -9,11 +14,6 @@ import { z } from 'zod';
 //     tags: ['Organisation'],
 //   },
 // };
-
-export const ZOrganisationNameSchema = z
-  .string()
-  .min(3, { message: 'Minimum 3 characters' })
-  .max(50, { message: 'Maximum 50 characters' });
 
 export const ZCreateOrganisationRequestSchema = z.object({
   name: ZOrganisationNameSchema,
