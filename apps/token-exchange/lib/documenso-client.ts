@@ -112,6 +112,7 @@ export type TemplateRecipient = {
   role: string;
   email?: string;
   name?: string | null;
+  signingOrder?: number | null;
 };
 
 export type GetTemplateByIdResponse = {

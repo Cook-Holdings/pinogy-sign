@@ -39,9 +39,10 @@ const DEFAULT_PLACEHOLDER_FIELDS = [
  * Body (JSON): templateId (number), recipientEmail (string), recipientName?, title?, placeholders?
  *   placeholders: optional array of { placeholder: string, type: string, matchAll?: boolean }. Types: SIGNATURE, DATE, INITIALS, NAME, etc.
  *   matchAll: when true (default), creates a field at every occurrence of the placeholder in the PDF (e.g. 4 signature fields on 4 pages).
- *   Defaults to [{{signature, r1}}]. When you omit `placeholders`, a second best-effort
- *   pass adds {{initials, r1}} (INITIALS, matchAll) if that text exists in the PDF.
- *   Otherwise pass `placeholders` explicitly (e.g. include INITIALS or omit it on purpose).
+ *   Defaults to [{{signature, r1}}]. When you omit `placeholders`, best-effort passes add
+ *   {{initials, r1}} and, for each extra SIGNER on the template (r2, r3, …), {{signature, rN}}
+ *   and {{initials, rN}} with matchAll — each skipped if that token is not in the PDF.
+ *   Pass `placeholders` explicitly when you need full control (or omit r2 defaults on purpose).
  *   Add {{date, r1}}, {{name, r1}}, etc. in `placeholders` when needed.
  *
  * Success: { envelopeId, signingUrl, signingToken }
@@ -159,8 +160,8 @@ export async function POST(request: NextRequest) {
   })();
 
   try {
-    const template = await getTemplate(apiKey.trim(), templateId);
-    const recipients = template.recipients ?? [];
+    let template = await getTemplate(apiKey.trim(), templateId);
+    let recipients = template.recipients ?? [];
     const existingSigner = recipients.find((r) => String(r.role).toUpperCase() === 'SIGNER');
 
     let signerId: number;
@@ -176,14 +177,31 @@ export async function POST(request: NextRequest) {
         throw new Error('Failed to create template signer');
       }
       signerId = first.id;
+      template = await getTemplate(apiKey.trim(), templateId);
+      recipients = template.recipients ?? [];
     }
+
+    const templateSignersOrdered = [...recipients]
+      .filter((r) => String(r.role).toUpperCase() === 'SIGNER')
+      .sort((a, b) => {
+        const ao = typeof a.signingOrder === 'number' ? a.signingOrder : 0;
+        const bo = typeof b.signingOrder === 'number' ? b.signingOrder : 0;
+
+        if (ao !== bo) {
+          return ao - bo;
+        }
+
+        return a.id - b.id;
+      });
+
+    const primarySignerId = templateSignersOrdered[0]?.id ?? signerId;
 
     if (placeholders.length > 0) {
       await createTemplateFields(
         apiKey.trim(),
         templateId,
         placeholders.map((p) => ({
-          recipientId: signerId,
+          recipientId: primarySignerId,
           type: p.type,
           placeholder: p.placeholder,
           ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
@@ -192,23 +210,57 @@ export async function POST(request: NextRequest) {
     }
 
     /*
-      Default list is signature-only. Document-from-template now whiteouts every
-      {{initials, r1}} in the PDF; without template INITIALS fields, signers see blanks
-      and cannot complete initials. When callers omit `placeholders`, try adding
-      INITIALS at all occurrences; ignore if the PDF has no such token.
+      Default list is signature-only for r1. create-document-from-template whiteouts every
+      {{initials, rN}} in the PDF; without matching INITIALS fields, signers see blanks.
+      When callers omit `placeholders`, add best-effort INITIALS (and extra SIGNER slots
+      r2+) with the correct template recipientId per Documenso rN ordering.
     */
     if (usedBuiltInDefaultPlaceholders) {
       try {
         await createTemplateFields(apiKey.trim(), templateId, [
           {
-            recipientId: signerId,
+            recipientId: primarySignerId,
             type: 'INITIALS',
             placeholder: '{{initials, r1}}',
             matchAll: true,
           },
         ]);
       } catch {
-        // PDF has no {{initials, r1}} — nothing to do
+        // PDF has no {{initials, r1}}
+      }
+
+      for (let slot = 2; slot <= templateSignersOrdered.length; slot++) {
+        const recipient = templateSignersOrdered[slot - 1];
+
+        if (!recipient) {
+          continue;
+        }
+
+        try {
+          await createTemplateFields(apiKey.trim(), templateId, [
+            {
+              recipientId: recipient.id,
+              type: 'SIGNATURE',
+              placeholder: `{{signature, r${slot}}}`,
+              matchAll: true,
+            },
+          ]);
+        } catch {
+          // No {{signature, rN}} in PDF
+        }
+
+        try {
+          await createTemplateFields(apiKey.trim(), templateId, [
+            {
+              recipientId: recipient.id,
+              type: 'INITIALS',
+              placeholder: `{{initials, r${slot}}}`,
+              matchAll: true,
+            },
+          ]);
+        } catch {
+          // No {{initials, rN}} in PDF
+        }
       }
     }
 

@@ -34,11 +34,27 @@ const NON_AUTO_SIGNABLE_ACTION_AUTH_TYPES: string[] = [
   DocumentAuth.TWO_FACTOR_AUTH,
 ];
 
-// The threshold for the number of fields that could be autosigned before displaying the dialog
-//
-// Reasoning: If there aren't that many fields, it's likely going to be easier to manually sign each one
-// while for larger documents with many fields it will be beneficial to sign away the boilerplate fields.
-const AUTO_SIGN_THRESHOLD = 5;
+// The threshold for the weighted field count (see getAutoSignDialogTriggerCount) before showing the
+// batch "Automatically sign fields" dialog. Default is high so typical envelopes do not interrupt
+// signing; lower in code if you want the dialog to appear for busy documents again.
+const AUTO_SIGN_THRESHOLD = 999;
+
+/** Count toward the dialog threshold: each non-INITIALS field counts as 1; all INITIALS count as 1
+ *  (matchAll creates one field per occurrence, which would otherwise always trigger the dialog). */
+const getAutoSignDialogTriggerCount = (fieldsList: Field[]): number => {
+  let nonInitials = 0;
+  let hasInitials = false;
+
+  for (const field of fieldsList) {
+    if (field.type === FieldType.INITIALS) {
+      hasInitials = true;
+    } else {
+      nonInitials += 1;
+    }
+  }
+
+  return nonInitials + (hasInitials ? 1 : 0);
+};
 
 export type DocumentSigningAutoSignProps = {
   recipient: Pick<Recipient, 'id' | 'token'>;
@@ -145,7 +161,10 @@ export const DocumentSigningAutoSign = ({ recipient, fields }: DocumentSigningAu
   };
 
   unsafe_useEffectOnce(() => {
-    if (actionAuthAllowsAutoSign && autoSignableFields.length > AUTO_SIGN_THRESHOLD) {
+    if (
+      actionAuthAllowsAutoSign &&
+      getAutoSignDialogTriggerCount(autoSignableFields) > AUTO_SIGN_THRESHOLD
+    ) {
       setOpen(true);
     }
   });
