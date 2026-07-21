@@ -19,6 +19,9 @@ on:
       - 'package.json'
       - 'turbo.json'
       - 'package-lock.json'
+      # patch-package patches are applied during the image's npm ci, so
+      # patch-only commits change runtime behavior and must trigger a deploy
+      - 'patches/**'
   workflow_dispatch:
     inputs:
       tag:

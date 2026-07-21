@@ -17,6 +17,11 @@ on:
       - 'packages/lib/**'
       - 'packages/prisma/**'
       - 'docker/Dockerfile.token-exchange'
+      # The image's npm ci applies patch-package patches and installs from the
+      # lockfile, so these change runtime behavior and must trigger a deploy
+      - 'patches/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       tag:
