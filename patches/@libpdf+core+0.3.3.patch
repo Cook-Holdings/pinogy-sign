@@ -1,0 +1,40 @@
+diff --git a/node_modules/@libpdf/core/dist/index.mjs b/node_modules/@libpdf/core/dist/index.mjs
+index 17ac26f..ca03a83 100644
+--- a/node_modules/@libpdf/core/dist/index.mjs
++++ b/node_modules/@libpdf/core/dist/index.mjs
+@@ -41683,6 +41683,35 @@ var PDFSignature = class {
+ 			PdfNumber.of(0),
+ 			PdfNumber.of(0)
+ 		]));
++		/*
++		PINOGY-PATCH(sig-widget-annots): ISO 32000 requires every widget annotation
++		to be listed in its page's /Annots array. This method sets /P on the merged
++		field+widget but never adds it to the page, producing an orphan signature
++		widget that Adobe Acrobat treats as structural damage (and repairs by
++		dropping signatures). Append the widget ref to the page /Annots, mutating
++		an indirect /Annots array in place to preserve indirection for the
++		incremental save. See docs/fork-patches/libpdf-core-sig-widget-annots.md
++		*/
++		const registry = this.pdf.context.registry;
++		const pageDict = registry.resolve(pageRef);
++		const widgetFieldRef = registry.getRef(fieldDict);
++		if (pageDict instanceof PdfDict && widgetFieldRef) {
++			const annotsEntry = pageDict.get("Annots");
++			let annots = annotsEntry instanceof PdfRef ? registry.resolve(annotsEntry) : annotsEntry;
++			if (!(annots instanceof PdfArray)) {
++				annots = new PdfArray([]);
++				pageDict.set("Annots", annots);
++			}
++			let alreadyListed = false;
++			for (let i = 0; i < annots.length; i++) {
++				const item = annots.at(i);
++				if (item instanceof PdfRef && item.objectNumber === widgetFieldRef.objectNumber && item.generation === widgetFieldRef.generation) {
++					alreadyListed = true;
++					break;
++				}
++			}
++			if (!alreadyListed) annots.push(widgetFieldRef);
++		}
+ 	}
+ 	/**
+ 	* Check for MDP (certification signature) violations.
