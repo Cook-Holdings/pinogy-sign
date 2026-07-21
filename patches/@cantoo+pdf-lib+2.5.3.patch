@@ -1,0 +1,66 @@
+diff --git a/node_modules/@cantoo/pdf-lib/cjs/api/form/PDFForm.js b/node_modules/@cantoo/pdf-lib/cjs/api/form/PDFForm.js
+index aff6419..566553f 100644
+--- a/node_modules/@cantoo/pdf-lib/cjs/api/form/PDFForm.js
++++ b/node_modules/@cantoo/pdf-lib/cjs/api/form/PDFForm.js
+@@ -492,6 +492,17 @@ class PDFForm {
+                 const page = this.findWidgetPage(widget);
+                 pages.add(page);
+                 page.node.removeAnnot(widgetRef);
++                // PINOGY-PATCH(pdf-annots-dangling-refs): findWidgetAppearanceRef returns
++                // the /AP appearance stream ref, which is never listed in the page's
++                // /Annots, so the removeAnnot call above is a no-op for fields whose
++                // widgets are separate kid objects. The kid objects are deleted from the
++                // context below, leaving dangling refs in /Annots that Adobe treats as
++                // structural corruption. Remove the actual widget annotation ref too.
++                // See docs/fork-patches/cantoo-pdf-lib-flatten-dangling-annots.md
++                const widgetDictRef = this.doc.context.getObjectRef(widget.dict);
++                if (widgetDictRef) {
++                    page.node.removeAnnot(widgetDictRef);
++                }
+             }
+             catch (err) {
+                 console.error(err);
+diff --git a/node_modules/@cantoo/pdf-lib/es/api/form/PDFForm.js b/node_modules/@cantoo/pdf-lib/es/api/form/PDFForm.js
+index 75c549e..30182e5 100644
+--- a/node_modules/@cantoo/pdf-lib/es/api/form/PDFForm.js
++++ b/node_modules/@cantoo/pdf-lib/es/api/form/PDFForm.js
+@@ -489,6 +489,17 @@ export default class PDFForm {
+                 const page = this.findWidgetPage(widget);
+                 pages.add(page);
+                 page.node.removeAnnot(widgetRef);
++                // PINOGY-PATCH(pdf-annots-dangling-refs): findWidgetAppearanceRef returns
++                // the /AP appearance stream ref, which is never listed in the page's
++                // /Annots, so the removeAnnot call above is a no-op for fields whose
++                // widgets are separate kid objects. The kid objects are deleted from the
++                // context below, leaving dangling refs in /Annots that Adobe treats as
++                // structural corruption. Remove the actual widget annotation ref too.
++                // See docs/fork-patches/cantoo-pdf-lib-flatten-dangling-annots.md
++                const widgetDictRef = this.doc.context.getObjectRef(widget.dict);
++                if (widgetDictRef) {
++                    page.node.removeAnnot(widgetDictRef);
++                }
+             }
+             catch (err) {
+                 console.error(err);
+diff --git a/node_modules/@cantoo/pdf-lib/src/api/form/PDFForm.ts b/node_modules/@cantoo/pdf-lib/src/api/form/PDFForm.ts
+index 78d7664..c69bed8 100644
+--- a/node_modules/@cantoo/pdf-lib/src/api/form/PDFForm.ts
++++ b/node_modules/@cantoo/pdf-lib/src/api/form/PDFForm.ts
+@@ -595,6 +595,17 @@ export default class PDFForm {
+         pages.add(page);
+ 
+         page.node.removeAnnot(widgetRef);
++        // PINOGY-PATCH(pdf-annots-dangling-refs): findWidgetAppearanceRef returns
++        // the /AP appearance stream ref, which is never listed in the page's
++        // /Annots, so the removeAnnot call above is a no-op for fields whose
++        // widgets are separate kid objects. The kid objects are deleted from the
++        // context below, leaving dangling refs in /Annots that Adobe treats as
++        // structural corruption. Remove the actual widget annotation ref too.
++        // See docs/fork-patches/cantoo-pdf-lib-flatten-dangling-annots.md
++        const widgetDictRef = this.doc.context.getObjectRef(widget.dict);
++        if (widgetDictRef) {
++          page.node.removeAnnot(widgetDictRef);
++        }
+       } catch (err) {
+         console.error(err);
+       }
