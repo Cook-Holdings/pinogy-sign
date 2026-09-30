@@ -13,7 +13,9 @@ function getAuthHeader(req: NextRequest): string | null {
 
 function getApiKey(req: NextRequest): string | null {
   const key = req.headers.get('X-Documenso-API-Key');
-  if (key) return key;
+  if (key) {
+    return key;
+  }
   const url = new URL(req.url);
   return url.searchParams.get('apiKey');
 }
@@ -23,21 +25,21 @@ function getApiKey(req: NextRequest): string | null {
  *
  * Creates a Documenso envelope (document) from a template and returns the signing URL.
  * Auth: Bearer TOKEN_EXCHANGE_SECRET. Documenso team identity: X-Documenso-API-Key or apiKey query.
- * Body: { recipientEmail, recipientName?, title?, prefillFields? }
+ * Body: { recipientEmail, recipientName?, title?, prefillFields?, uploadSignatureEnabled? }
+ *   title: becomes the document title (the heading the signer reads); omitted → the template's title.
+ *   uploadSignatureEnabled: the signature pad's Upload tab is OFF unless this is `true`
+ *     (Draw/Type follow the template). Upload must never be offered for in-store signing.
  */
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ templateId: string }> },
-) {
+export async function POST(request: NextRequest, context: { params: Promise<{ templateId: string }> }) {
   const secret = process.env.TOKEN_EXCHANGE_SECRET;
 
   if (!secret) {
     return cors(
       request,
-      new Response(
-        JSON.stringify({ error: 'Token exchange is not configured', code: 'CONFIG_ERROR' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'Token exchange is not configured', code: 'CONFIG_ERROR' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
   }
 
@@ -56,10 +58,10 @@ export async function POST(
   if (!apiKey?.trim()) {
     return cors(
       request,
-      new Response(
-        JSON.stringify({ error: 'Missing X-Documenso-API-Key or apiKey', code: 'INVALID_REQUEST' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'Missing X-Documenso-API-Key or apiKey', code: 'INVALID_REQUEST' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
   }
 
@@ -94,16 +96,17 @@ export async function POST(
   if (!recipientEmail.trim()) {
     return cors(
       request,
-      new Response(
-        JSON.stringify({ error: 'Missing or invalid recipientEmail', code: 'INVALID_REQUEST' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'Missing or invalid recipientEmail', code: 'INVALID_REQUEST' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
   }
 
   const recipientName = typeof data.recipientName === 'string' ? data.recipientName : 'Signer';
   const title = typeof data.title === 'string' ? data.title : undefined;
   const prefillFields = Array.isArray(data.prefillFields) ? data.prefillFields : undefined;
+  const uploadSignatureEnabled = data.uploadSignatureEnabled === true;
 
   try {
     const result = await createEnvelope(apiKey.trim(), templateId.trim(), {
@@ -111,6 +114,7 @@ export async function POST(
       recipientName: recipientName.trim() || 'Signer',
       title: title?.trim() || undefined,
       prefillFields,
+      uploadSignatureEnabled,
     });
 
     return cors(
@@ -126,15 +130,10 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const isNoSigner =
-      message.includes('signer recipient') || message.includes('at least one signer');
+    const isNoSigner = message.includes('signer recipient') || message.includes('at least one signer');
     const isDocumenso = message.includes('Documenso') || isNoSigner;
 
-    const code = isNoSigner
-      ? 'TEMPLATE_NO_SIGNER'
-      : isDocumenso
-        ? 'DOCUMENSO_API_ERROR'
-        : 'CREATE_ENVELOPE_FAILED';
+    const code = isNoSigner ? 'TEMPLATE_NO_SIGNER' : isDocumenso ? 'DOCUMENSO_API_ERROR' : 'CREATE_ENVELOPE_FAILED';
     const status = isNoSigner ? 400 : 502;
     const hint = isNoSigner
       ? 'Open the template authoring_link (from your backend) and add at least one signer recipient, then retry create-envelope.'

@@ -8,6 +8,7 @@
     "start": "next start -p 3000",
     "lint:fix": "next lint --fix",
     "clean": "rimraf .next && rimraf node_modules",
+    "test": "tsx --test lib/*.test.ts",
     "test:live": "tsx scripts/test-live-api.ts"
   },
   "dependencies": {

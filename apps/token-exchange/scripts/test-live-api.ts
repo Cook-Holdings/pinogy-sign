@@ -6,7 +6,7 @@
  *
  * Run from apps/token-exchange: npx tsx scripts/test-live-api.ts
  * Requires .env (or .env.test) with TOKEN_EXCHANGE_URL, TOKEN_EXCHANGE_SECRET,
- * ORGANISATION_ID, SLUG, PDF_PATH, RECIPIENT_EMAIL.
+ * ORGANISATION_ID, SLUG, PDF_PATH, RECIPIENT_EMAIL. Optional: TEAM_NAME (team display name).
  */
 import 'dotenv/config';
 import fs from 'node:fs';
@@ -16,6 +16,7 @@ const TOKEN_EXCHANGE_URL = process.env.TOKEN_EXCHANGE_URL?.replace(/\/$/, '');
 const TOKEN_EXCHANGE_SECRET = process.env.TOKEN_EXCHANGE_SECRET;
 const ORGANISATION_ID = process.env.ORGANISATION_ID;
 const SLUG = process.env.SLUG;
+const TEAM_NAME = process.env.TEAM_NAME;
 const PDF_PATH = process.env.PDF_PATH;
 const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL;
 const RECIPIENT_NAME = process.env.RECIPIENT_NAME ?? 'Signer';
@@ -32,12 +33,24 @@ function fail(step: string, status?: number, body?: string): never {
 
 function validateEnv(): void {
   const missing: string[] = [];
-  if (!TOKEN_EXCHANGE_URL) missing.push('TOKEN_EXCHANGE_URL');
-  if (!TOKEN_EXCHANGE_SECRET) missing.push('TOKEN_EXCHANGE_SECRET');
-  if (!ORGANISATION_ID) missing.push('ORGANISATION_ID');
-  if (!SLUG) missing.push('SLUG');
-  if (!PDF_PATH) missing.push('PDF_PATH');
-  if (!RECIPIENT_EMAIL) missing.push('RECIPIENT_EMAIL');
+  if (!TOKEN_EXCHANGE_URL) {
+    missing.push('TOKEN_EXCHANGE_URL');
+  }
+  if (!TOKEN_EXCHANGE_SECRET) {
+    missing.push('TOKEN_EXCHANGE_SECRET');
+  }
+  if (!ORGANISATION_ID) {
+    missing.push('ORGANISATION_ID');
+  }
+  if (!SLUG) {
+    missing.push('SLUG');
+  }
+  if (!PDF_PATH) {
+    missing.push('PDF_PATH');
+  }
+  if (!RECIPIENT_EMAIL) {
+    missing.push('RECIPIENT_EMAIL');
+  }
   if (missing.length > 0) {
     fail('validate env', undefined, `Missing env: ${missing.join(', ')}`);
   }
@@ -54,7 +67,11 @@ async function step1Exchange(): Promise<string> {
       Authorization: `Bearer ${TOKEN_EXCHANGE_SECRET}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ slug: SLUG, organisationId: ORGANISATION_ID }),
+    body: JSON.stringify({
+      slug: SLUG,
+      organisationId: ORGANISATION_ID,
+      ...(TEAM_NAME ? { teamName: TEAM_NAME } : {}),
+    }),
   });
   const text = await res.text();
   if (!res.ok) {

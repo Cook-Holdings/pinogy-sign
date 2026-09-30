@@ -66,8 +66,12 @@ export async function getTemplates(
 ): Promise<GetTemplatesResponse> {
   const baseUrl = getDocumensoUrl();
   const params = new URLSearchParams();
-  if (options?.page) params.set('page', String(options.page));
-  if (options?.perPage) params.set('perPage', String(options.perPage));
+  if (options?.page) {
+    params.set('page', String(options.page));
+  }
+  if (options?.perPage) {
+    params.set('perPage', String(options.perPage));
+  }
 
   const url = `${baseUrl}/api/v1/templates${params.toString() ? `?${params}` : ''}`;
   const res = await fetch(url, {
@@ -115,20 +119,24 @@ export type TemplateRecipient = {
   signingOrder?: number | null;
 };
 
+export type TemplateSignatureMeta = {
+  typedSignatureEnabled?: boolean | null;
+  uploadSignatureEnabled?: boolean | null;
+  drawSignatureEnabled?: boolean | null;
+};
+
 export type GetTemplateByIdResponse = {
   id: number;
   envelopeId: string;
   recipients: TemplateRecipient[];
+  templateMeta?: TemplateSignatureMeta | null;
   [key: string]: unknown;
 };
 
 /**
  * Fetch a template by ID so we can use its recipient slots (e.g. first SIGNER) when creating a document.
  */
-export async function getTemplate(
-  apiKey: string,
-  templateId: number,
-): Promise<GetTemplateByIdResponse> {
+export async function getTemplate(apiKey: string, templateId: number): Promise<GetTemplateByIdResponse> {
   const baseUrl = getDocumensoUrl();
   const url = `${baseUrl}/api/v2-beta/template/${templateId}`;
 
@@ -152,6 +160,11 @@ export type CreateEnvelopeRequest = {
   recipientEmail: string;
   recipientName?: string;
   title?: string;
+  /**
+   * Offer the signature pad's Upload tab. Off unless the caller passes `true`: an uploaded image
+   * is not a signature the signer made, and for in-store (tablet) signing it must not be offered.
+   */
+  uploadSignatureEnabled?: boolean;
   prefillFields?: Array<{
     id: number;
     type: string;
@@ -171,10 +184,7 @@ export type CreateTemplateResponse = {
   id: number;
 };
 
-export async function createTemplate(
-  apiKey: string,
-  formData: FormData,
-): Promise<CreateTemplateResponse> {
+export async function createTemplate(apiKey: string, formData: FormData): Promise<CreateTemplateResponse> {
   const baseUrl = getDocumensoUrl();
   const url = `${baseUrl}/api/v2-beta/template/create`;
 
@@ -195,10 +205,63 @@ export async function createTemplate(
   return res.json() as Promise<CreateTemplateResponse>;
 }
 
+/** Documenso's limit on `override.title` for template/use (ZCreateDocumentFromTemplateRequestSchema). */
+export const ENVELOPE_TITLE_MAX_LENGTH = 255;
+
+export type TemplateUseOverride = {
+  title?: string;
+  typedSignatureEnabled?: boolean;
+  uploadSignatureEnabled?: boolean;
+  drawSignatureEnabled?: boolean;
+};
+
+/**
+ * Build the template/use `override` for documents created through this service.
+ *
+ * Signature types: the Upload tab of the signature pad is turned off unless the caller explicitly
+ * asks for it (`uploadSignatureEnabled: true`). An uploaded image is not a signature the signer
+ * made, and for in-store signing on a store's tablet it must never be offered (pinogy-tablet#489).
+ * Draw and Type are left to the template's own settings, except that if the template had disabled
+ * both of them we re-enable Draw: with all three off the signature pad renders nothing and the
+ * document cannot be signed at all.
+ *
+ * Title: the caller's `title` becomes the document title (the heading the signer reads, and the
+ * subject of the Documenso emails). Without it the document keeps the template's title. Trimmed,
+ * and truncated to Documenso's 255-character limit so an over-long title cannot fail the call.
+ */
+export function buildTemplateUseOverride({
+  title,
+  templateMeta,
+  allowUploadSignature = false,
+}: {
+  title?: string;
+  templateMeta?: TemplateSignatureMeta | null;
+  allowUploadSignature?: boolean;
+}): TemplateUseOverride {
+  const override: TemplateUseOverride = { uploadSignatureEnabled: allowUploadSignature === true };
+
+  const isDrawDisabled = templateMeta?.drawSignatureEnabled === false;
+  const isTypedDisabled = templateMeta?.typedSignatureEnabled === false;
+
+  if (isDrawDisabled && isTypedDisabled && !override.uploadSignatureEnabled) {
+    override.drawSignatureEnabled = true;
+  }
+
+  const trimmedTitle = title?.trim().slice(0, ENVELOPE_TITLE_MAX_LENGTH).trim();
+
+  if (trimmedTitle) {
+    override.title = trimmedTitle;
+  }
+
+  return override;
+}
+
 /**
  * Create an envelope (document) from a template by using the Documenso "template/use" API.
  * Fetches the template and includes all recipients (signers, approvers, viewers, CC) mapped by id.
  * The first SIGNER slot is filled with the requested recipient email/name; other recipients keep their template values.
+ * `body.title`, when given, becomes the document title; the Upload signature option is off unless
+ * `body.uploadSignatureEnabled === true` (see `buildTemplateUseOverride`).
  */
 export async function createEnvelope(
   apiKey: string,
@@ -234,6 +297,11 @@ export async function createEnvelope(
     }),
     prefillFields: body.prefillFields,
     distributeDocument: true,
+    override: buildTemplateUseOverride({
+      title: body.title,
+      templateMeta: template.templateMeta,
+      allowUploadSignature: body.uploadSignatureEnabled === true,
+    }),
   };
 
   const res = await fetch(`${baseUrl}/api/v2-beta/template/use`, {
@@ -258,9 +326,7 @@ export async function createEnvelope(
 
   const doc = (await res.json()) as UseResponse;
 
-  const signerRecipient = doc.recipients?.find(
-    (rec) => String(rec.role).toUpperCase() === 'SIGNER',
-  );
+  const signerRecipient = doc.recipients?.find((rec) => String(rec.role).toUpperCase() === 'SIGNER');
   if (!signerRecipient?.token) {
     throw new Error('Documenso template/use did not return a signing token');
   }
@@ -280,10 +346,7 @@ export async function createEnvelope(
  * create one signer (r1) from the provided recipient and place fields at those positions.
  * Returns the envelope id (DRAFT). Call distributeEnvelope to get signing URL.
  */
-export async function createDocumentFromPdf(
-  apiKey: string,
-  formData: FormData,
-): Promise<{ id: string }> {
+export async function createDocumentFromPdf(apiKey: string, formData: FormData): Promise<{ id: string }> {
   const baseUrl = getDocumensoUrl();
   const res = await fetch(`${baseUrl}/api/v2-beta/envelope/create`, {
     method: 'POST',
@@ -321,10 +384,7 @@ export type DistributeEnvelopeResponse = {
 /**
  * Distribute an envelope so it is sent to recipients and signing URLs are available.
  */
-export async function distributeEnvelope(
-  apiKey: string,
-  envelopeId: string,
-): Promise<DistributeEnvelopeResponse> {
+export async function distributeEnvelope(apiKey: string, envelopeId: string): Promise<DistributeEnvelopeResponse> {
   const baseUrl = getDocumensoUrl();
   const res = await fetch(`${baseUrl}/api/v2-beta/envelope/distribute`, {
     method: 'POST',
@@ -385,9 +445,7 @@ export async function createTemplateRecipients(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(
-      `Documenso template/recipient/create-many failed (${res.status}): ${text.slice(0, 300)}`,
-    );
+    throw new Error(`Documenso template/recipient/create-many failed (${res.status}): ${text.slice(0, 300)}`);
   }
 
   const data = (await res.json()) as { recipients?: CreateTemplateRecipientResult[] };
@@ -456,9 +514,7 @@ export async function createTemplateFields(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(
-      `Documenso template/field/create-many failed (${res.status}): ${text.slice(0, 300)}`,
-    );
+    throw new Error(`Documenso template/field/create-many failed (${res.status}): ${text.slice(0, 300)}`);
   }
 
   return (await res.json()) as { fields: unknown[] };

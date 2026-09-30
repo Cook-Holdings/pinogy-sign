@@ -19,15 +19,15 @@ function getAuthHeader(req: NextRequest): string | null {
 
 function getApiKey(req: NextRequest): string | null {
   const key = req.headers.get('X-Documenso-API-Key');
-  if (key) return key;
+  if (key) {
+    return key;
+  }
   const url = new URL(req.url);
   return url.searchParams.get('apiKey');
 }
 
 /** Default placeholders to add when configuring a template so it's ready to sign. */
-const DEFAULT_PLACEHOLDER_FIELDS = [
-  { placeholder: '{{signature, r1}}', type: 'SIGNATURE' },
-] as const;
+const DEFAULT_PLACEHOLDER_FIELDS = [{ placeholder: '{{signature, r1}}', type: 'SIGNATURE' }] as const;
 
 /**
  * POST /api/document/create-from-template
@@ -37,7 +37,10 @@ const DEFAULT_PLACEHOLDER_FIELDS = [
  * {{date, r1}}, {{initials, r1}} or {{initial, r1}}, {{name, r1}}) but the template was never opened in the authoring UI.
  *
  * Auth: Bearer TOKEN_EXCHANGE_SECRET. X-Documenso-API-Key or apiKey query (required).
- * Body (JSON): templateId (number), recipientEmail (string), recipientName?, title?, placeholders?
+ * Body (JSON): templateId (number), recipientEmail (string), recipientName?, title?, placeholders?, uploadSignatureEnabled?
+ *   title: becomes the document title (the heading the signer reads); omitted → the template's title.
+ *   uploadSignatureEnabled: the signature pad's Upload tab is OFF unless this is `true`
+ *     (Draw/Type follow the template). Upload must never be offered for in-store signing.
  *   placeholders: optional array of { placeholder: string, type: string, matchAll?: boolean, fieldMeta?: object }.
  *   Types: SIGNATURE, DATE, INITIALS, NAME, CHECKBOX, etc.
  *   matchAll: when true (default), creates a field at every occurrence of the placeholder in the PDF (e.g. 4 signature fields on 4 pages).
@@ -59,10 +62,10 @@ export async function POST(request: NextRequest) {
   if (!secret) {
     return cors(
       request,
-      new Response(
-        JSON.stringify({ error: 'Token exchange is not configured', code: 'CONFIG_ERROR' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'Token exchange is not configured', code: 'CONFIG_ERROR' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
   }
 
@@ -107,36 +110,32 @@ export async function POST(request: NextRequest) {
   const isRecord = (v: unknown): v is Record<string, unknown> =>
     typeof v === 'object' && v !== null && !Array.isArray(v);
   const data = isRecord(body) ? body : {};
-  const templateId =
-    typeof data.templateId === 'number' ? data.templateId : Number(data.templateId);
+  const templateId = typeof data.templateId === 'number' ? data.templateId : Number(data.templateId);
   const recipientEmail =
-    typeof data.recipientEmail === 'string' && data.recipientEmail.trim()
-      ? data.recipientEmail.trim()
-      : '';
+    typeof data.recipientEmail === 'string' && data.recipientEmail.trim() ? data.recipientEmail.trim() : '';
   const recipientName =
-    typeof data.recipientName === 'string' && data.recipientName.trim()
-      ? data.recipientName.trim()
-      : 'Signer';
+    typeof data.recipientName === 'string' && data.recipientName.trim() ? data.recipientName.trim() : 'Signer';
   const title = typeof data.title === 'string' && data.title.trim() ? data.title.trim() : undefined;
   const placeholdersRaw = data.placeholders;
+  const uploadSignatureEnabled = data.uploadSignatureEnabled === true;
 
   if (!Number.isInteger(templateId) || templateId < 1) {
     return cors(
       request,
-      new Response(
-        JSON.stringify({ error: 'Missing or invalid templateId', code: 'INVALID_REQUEST' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'Missing or invalid templateId', code: 'INVALID_REQUEST' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
   }
 
   if (!recipientEmail) {
     return cors(
       request,
-      new Response(
-        JSON.stringify({ error: 'Missing or invalid recipientEmail', code: 'INVALID_REQUEST' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'Missing or invalid recipientEmail', code: 'INVALID_REQUEST' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     );
   }
 
@@ -147,8 +146,7 @@ export async function POST(request: NextRequest) {
     fieldMeta?: Record<string, unknown>;
   };
 
-  const usedBuiltInDefaultPlaceholders =
-    !Array.isArray(placeholdersRaw) || placeholdersRaw.length === 0;
+  const usedBuiltInDefaultPlaceholders = !Array.isArray(placeholdersRaw) || placeholdersRaw.length === 0;
 
   const placeholders: PlaceholderEntry[] = (() => {
     if (Array.isArray(placeholdersRaw) && placeholdersRaw.length > 0) {
@@ -312,6 +310,7 @@ export async function POST(request: NextRequest) {
       recipientEmail,
       recipientName,
       title,
+      uploadSignatureEnabled,
     });
 
     return cors(
