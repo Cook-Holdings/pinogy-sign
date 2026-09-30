@@ -42,7 +42,7 @@ Join us in creating the next generation of open trust infrastructure.
 
 ## Fork Notice
 
-This is a modified version of [Documenso](https://github.com/documenso/documenso), an open-source document signing platform. Modified by [mm-pinogy](https://github.com/mm-pinogy) for custom use cases including token exchange integration. Licensed under GNU AGPL v3. See [LICENSE](./LICENSE).
+This is a modified version of [Documenso](https://github.com/documenso/documenso), an open-source document signing platform. Modified by Pinogy / Cook Holdings for custom use cases including token exchange integration; the source of the modified version is at [github.com/Cook-Holdings/pinogy-sign](https://github.com/Cook-Holdings/pinogy-sign). Licensed under GNU AGPL v3. See [LICENSE](./LICENSE) and [LICENSE_COMPLIANCE.md](./LICENSE_COMPLIANCE.md).
 
 ## Recognition
 

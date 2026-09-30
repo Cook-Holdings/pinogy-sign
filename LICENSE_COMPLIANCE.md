@@ -1,12 +1,12 @@
 # License Compliance Checklist for Documenso Fork
 
-This document helps you verify that your fork (mm-pinogy/documenso) complies with all applicable licenses.
+This document helps you verify that this fork ([Cook-Holdings/pinogy-sign](https://github.com/Cook-Holdings/pinogy-sign), formerly `mm-pinogy/documenso`) complies with all applicable licenses.
 
 ## Compliance Summary – What Was Done
 
 | Requirement | Action Taken | Status |
 |-------------|--------------|--------|
-| **AGPL §13 – Source availability** | Added `AppFooter` component with link to `github.com/mm-pinogy/documenso` on all pages | Done |
+| **AGPL §13 – Source availability** | `AppFooter` links to `github.com/Cook-Holdings/pinogy-sign` on every page: the full attribution sentence on app pages, a compact "Source code · AGPL-3.0" line on recipient (signing) pages — see [Footer placement](#footer-placement-full-vs-compact) | Done |
 | **AGPL §5a – Modification notice** | Added "Fork Notice" section to `README.md` stating modified version, attribution to Documenso, and AGPL v3 | Done |
 | **AGPL §5d – Legal notices in UI** | `AppFooter` displays source link, AGPL v3 license link, and Documenso attribution | Done |
 | **EE Commercial License** | Confirmed `NEXT_PRIVATE_DOCUMENSO_LICENSE_KEY` is blank; no EE usage in custom code (e.g. token-exchange) | Verified |
@@ -32,11 +32,32 @@ Your fork modifies the AGPL-licensed code. You **must** satisfy these requiremen
 **Requirement:** If users interact with your modified version over a network (e.g., sign.pinogy.com, sign-token.pinogy.com), you must **prominently offer** them a way to obtain the Corresponding Source (your modified source code).
 
 **Checklist:**
-- [x] Your modified source is publicly available (e.g., at `https://github.com/mm-pinogy/documenso`)
+- [x] Your modified source is publicly available at `https://github.com/Cook-Holdings/pinogy-sign` (public repository)
 - [x] The app UI includes a visible link (e.g., "Source" or "View source code") that points to your repository
 - [x] The link is easy for users to find (footer, about page, or settings)
 
-**Implemented:** `AppFooter` component in `apps/remix/app/components/general/app-footer.tsx` displays source link and license info on all pages.
+**Implemented:** `AppFooter` component in `apps/remix/app/components/general/app-footer.tsx` displays a source link and license link on all pages, rendered once from `apps/remix/app/root.tsx`. The URL is the `SOURCE_CODE_URL` constant in that file.
+
+#### Footer placement: full vs. compact
+
+`root.tsx` renders `AppFooter` in one of two variants, chosen by `isRecipientRoute` (any route under `routes/_recipient+`, i.e. `/sign/*` and `/d/*`):
+
+| Where | Variant | What it shows |
+|-------|---------|---------------|
+| App pages (dashboard, settings, auth, admin, embeds) | `full` | "Based on Documenso. Source code: github.com/Cook-Holdings/pinogy-sign. Licensed under AGPL v3" |
+| Recipient / signing pages (`/sign/*`, `/d/*`) | `compact` | "Source code · AGPL-3.0", both links |
+
+**Why the compact variant exists.** Signing pages are what consumers see, frequently on a store's in-person tablet. The full sentence ("Based on Documenso … github.com/…") read as confusing third-party branding on a legal document the customer is signing (Pinogy adoption tablet QA, 2026-09-29 — [pinogy-tablet#489](https://github.com/Cook-Holdings/pinogy-tablet/issues/489)).
+
+**Why it still satisfies §13.** §13 requires that the modified program "prominently offer all users interacting with it remotely through a computer network … an opportunity to receive the Corresponding Source … by providing access to the Corresponding Source from a network server at no charge". The compact line:
+
+- is rendered on **every** recipient page, in the page itself — not behind a menu, a hover, or a separate "about" page;
+- is a visible, underlined link labelled "Source code" that goes **directly** to the public repository of the deployed code, at no charge and without an account;
+- keeps the license name and a link to its full text next to it.
+
+What changed is the wording and size, not the offer. Anything that makes the link disappear on a recipient route (removing `AppFooter` from `root.tsx`, conditionally not rendering it, hiding it with CSS, pointing it at a private or stale repository) would break §13 — don't.
+
+**The source URL must stay live and public.** The old URL, `github.com/mm-pinogy/documenso`, only kept working through GitHub's transfer redirect, which disappears if that name is ever reused. All references now point at `https://github.com/Cook-Holdings/pinogy-sign` directly.
 
 ### ✅ Modification Notice (Section 5a)
 
@@ -73,7 +94,9 @@ Your fork modifies the AGPL-licensed code. You **must** satisfy these requiremen
   - Link to the full license: https://www.gnu.org/licenses/agpl-3.0.html
   - Link to your source code
 
-**Implemented:** `AppFooter` provides Documenso attribution, source link, and AGPL v3 link. Full warranty disclaimer is in root `LICENSE` file.
+**Implemented:** `AppFooter` provides Documenso attribution, source link, and AGPL v3 link on app pages; on recipient pages the compact variant keeps the source link and AGPL-3.0 link (the Documenso attribution sentence is dropped there). Full warranty disclaimer is in root `LICENSE` file.
+
+Note that §5(d) only obliges a modified work to display Appropriate Legal Notices where the program it modifies already did ("if the Program has interactive interfaces that do not display Appropriate Legal Notices, your work need not make them do so"). Upstream Documenso's signing pages carry no such notice, so the compact variant does not fall short of §5(d); the §13 source offer is the requirement that governs these pages.
 
 ---
 
@@ -156,7 +179,7 @@ npx license-checker --summary
    ```
 
 4. **Confirm public source**
-   - Your repo at https://github.com/mm-pinogy/documenso is public
+   - Your repo at https://github.com/Cook-Holdings/pinogy-sign is public
    - It contains the full source of your modified version
 
 ---
@@ -166,7 +189,7 @@ npx license-checker --summary
 | Item | Location | Purpose | Status |
 |------|----------|---------|--------|
 | Fork notice | `README.md` | Satisfy AGPL 5a (modification notice) | Done |
-| Source link in UI | App footer (`AppFooter`) | Satisfy AGPL 13 (network use) | Done |
+| Source link in UI | App footer (`AppFooter`; compact on recipient pages) | Satisfy AGPL 13 (network use) | Done |
 | NOTICE file | Root `NOTICE` | Optional; central place for attribution | Optional |
 
 ---

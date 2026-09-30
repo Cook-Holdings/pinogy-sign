@@ -166,7 +166,8 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
               <TrpcProvider>
                 <div className="flex min-h-screen flex-col">
                   {children}
-                  <AppFooter />
+                  {/* Compact on signing pages (consumers); must stay rendered for AGPL-3.0 §13. */}
+                  <AppFooter variant={isRecipientRoute ? 'compact' : 'full'} />
                 </div>
                 <Toaster />
               </TrpcProvider>
