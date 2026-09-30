@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import cors from '@/lib/cors';
 import {
+  type CreateTemplateFieldInput,
   createEnvelope,
   createTemplateFields,
   createTemplateRecipients,
@@ -37,8 +38,13 @@ const DEFAULT_PLACEHOLDER_FIELDS = [
  *
  * Auth: Bearer TOKEN_EXCHANGE_SECRET. X-Documenso-API-Key or apiKey query (required).
  * Body (JSON): templateId (number), recipientEmail (string), recipientName?, title?, placeholders?
- *   placeholders: optional array of { placeholder: string, type: string, matchAll?: boolean }. Types: SIGNATURE, DATE, INITIALS, NAME, etc.
+ *   placeholders: optional array of { placeholder: string, type: string, matchAll?: boolean, fieldMeta?: object }.
+ *   Types: SIGNATURE, DATE, INITIALS, NAME, CHECKBOX, etc.
  *   matchAll: when true (default), creates a field at every occurrence of the placeholder in the PDF (e.g. 4 signature fields on 4 pages).
+ *   fieldMeta: passed through to Documenso (e.g. { required: true } for a CHECKBOX); `type` is filled in from
+ *   the field type when omitted. Without it a CHECKBOX is one unlabeled box — the label is expected on the PDF.
+ *   The field goes to the rN signer named in the placeholder ({{checkbox, r2}} → second SIGNER by
+ *   signingOrder); a placeholder with no rN goes to the first signer.
  *   Defaults to [{{signature, r1}}]. When you omit `placeholders`, best-effort passes add
  *   {{initials, r1}} and, for each extra SIGNER on the template (r2, r3, …), {{signature, rN}}
  *   and {{initials, rN}} with matchAll — each skipped if that token is not in the PDF.
@@ -134,7 +140,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  type PlaceholderEntry = { placeholder: string; type: string; matchAll?: boolean };
+  type PlaceholderEntry = {
+    placeholder: string;
+    type: string;
+    matchAll?: boolean;
+    fieldMeta?: Record<string, unknown>;
+  };
 
   const usedBuiltInDefaultPlaceholders =
     !Array.isArray(placeholdersRaw) || placeholdersRaw.length === 0;
@@ -150,6 +161,14 @@ export async function POST(request: NextRequest) {
           placeholder: String(p.placeholder).trim(),
           type: String(p.type).trim(),
           ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
+          ...(isRecord(p.fieldMeta)
+            ? {
+                fieldMeta: {
+                  type: String(p.type).trim().toLowerCase(),
+                  ...p.fieldMeta,
+                },
+              }
+            : {}),
         }))
         .filter((p) => p.placeholder.length > 0 && p.type.length > 0);
     }
@@ -196,17 +215,42 @@ export async function POST(request: NextRequest) {
 
     const primarySignerId = templateSignersOrdered[0]?.id ?? signerId;
 
-    if (placeholders.length > 0) {
-      await createTemplateFields(
-        apiKey.trim(),
-        templateId,
-        placeholders.map((p) => ({
-          recipientId: primarySignerId,
-          type: p.type,
-          placeholder: p.placeholder,
-          ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
-        })),
-      );
+    /*
+      Assign each placeholder to the signer its rN names, matching Documenso's rN ordering
+      (r1 = first SIGNER by signingOrder). A missing rN signer is a caller error: falling back
+      to r1 would let the wrong person tick the box.
+    */
+    const placeholderFields: CreateTemplateFieldInput[] = [];
+
+    for (const p of placeholders) {
+      const slotMatch = p.placeholder.match(/,\s*r(\d+)\s*(?:,|\}\})/i);
+      const slot = slotMatch ? Number(slotMatch[1]) : 1;
+      const recipientId = slot === 1 ? primarySignerId : templateSignersOrdered[slot - 1]?.id;
+
+      if (!recipientId) {
+        return cors(
+          request,
+          new Response(
+            JSON.stringify({
+              error: `Placeholder ${p.placeholder} names signer r${slot}, but the template has ${templateSignersOrdered.length} signer(s)`,
+              code: 'INVALID_REQUEST',
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
+
+      placeholderFields.push({
+        recipientId,
+        type: p.type,
+        placeholder: p.placeholder,
+        ...(typeof p.matchAll === 'boolean' ? { matchAll: p.matchAll } : {}),
+        ...(p.fieldMeta ? { fieldMeta: p.fieldMeta } : {}),
+      });
+    }
+
+    if (placeholderFields.length > 0) {
+      await createTemplateFields(apiKey.trim(), templateId, placeholderFields);
     }
 
     /*
