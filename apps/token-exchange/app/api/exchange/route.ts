@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import cors from '@/lib/cors';
 import { exchangeCredentials, exchangeTrusted } from '@/lib/exchange';
+import { normaliseTeamName } from '@/lib/team-name';
 
 function getAuthHeader(req: NextRequest): string | null {
   const auth = req.headers.get('Authorization');
@@ -17,8 +18,18 @@ function getAuthHeader(req: NextRequest): string | null {
  * Token exchange: returns a Documenso API key for the given org + slug.
  * Authenticated by TOKEN_EXCHANGE_SECRET (Bearer or X-API-Key).
  *
- * Body (trusted flow): { slug: string, organisationId: string }
- * Body (credential flow): { credentials: { host?, accessKey?, secretKey? }, slug: string, organisationId: string }
+ * Body (trusted flow): { slug: string, organisationId: string, teamName?: string }
+ * Body (credential flow): { credentials: { host?, accessKey?, secretKey? }, slug: string, organisationId: string, teamName?: string }
+ *
+ * `slug` is the team's stable machine key (its URL); it identifies the team and never changes.
+ * `teamName` (optional) is the consumer-facing display name signers see on the signing page and
+ * in emails ("<team> on behalf of "<team>" has invited you to sign…"):
+ * - new team: created with `teamName` as its name (falls back to `slug` when absent);
+ * - existing team: renamed to `teamName` only while its name is still the slug, i.e. it was never
+ *   renamed by a human in the Documenso UI. A human-set name is never overwritten.
+ * `teamName` is trimmed, whitespace-collapsed and truncated to 30 characters (Documenso's team
+ * name limit). A value under 3 characters, containing a URL, or not a string is ignored and the
+ * request behaves as if it were absent — it never fails the exchange.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.TOKEN_EXCHANGE_SECRET;
@@ -63,6 +74,7 @@ export async function POST(request: NextRequest) {
   const credentials = data.credentials;
   const slug = typeof data.slug === 'string' ? data.slug : '';
   const organisationId = typeof data.organisationId === 'string' ? data.organisationId : '';
+  const teamName = normaliseTeamName(data.teamName);
 
   if (!slug.trim() || !organisationId.trim()) {
     return cors(
@@ -79,18 +91,19 @@ export async function POST(request: NextRequest) {
 
   // Credential flow is only used when we have a real validator; otherwise use trusted flow.
   // Trusted flow: auth is TOKEN_EXCHANGE_SECRET; slug + organisationId are enough.
-  const useCredentialFlow =
-    process.env.TOKEN_EXCHANGE_VALIDATE_CREDENTIALS === 'true' && isRecord(credentials);
+  const useCredentialFlow = process.env.TOKEN_EXCHANGE_VALIDATE_CREDENTIALS === 'true' && isRecord(credentials);
 
   const result = useCredentialFlow
     ? await exchangeCredentials({
         credentials,
         slug: slug.trim(),
         organisationId: organisationId.trim(),
+        teamName,
       })
     : await exchangeTrusted({
         slug: slug.trim(),
         organisationId: organisationId.trim(),
+        teamName,
       });
 
   if (!result.success) {

@@ -1,15 +1,20 @@
-import slugify from '@sindresorhus/slugify';
-
 import { createApiToken } from '@documenso/lib/server-only/public-api/create-api-token';
 import { createTeam } from '@documenso/lib/server-only/team/create-team';
 import { prisma } from '@documenso/prisma';
+import slugify from '@sindresorhus/slugify';
 
+import { teamNameToApply } from './team-name';
 import { validateThirdPartyCredentials } from './validate-credentials';
 
 export type ExchangeInput = {
   credentials: Record<string, unknown>;
   slug: string;
   organisationId: string;
+  /**
+   * Optional consumer-facing team display name (already normalised with `normaliseTeamName`).
+   * `null`/absent keeps the pre-existing behaviour: the team is named after the slug.
+   */
+  teamName?: string | null;
 };
 
 export type ExchangeResult =
@@ -20,6 +25,7 @@ export async function exchangeCredentials({
   credentials,
   slug,
   organisationId,
+  teamName,
 }: ExchangeInput): Promise<ExchangeResult> {
   const isValid = await validateThirdPartyCredentials(credentials);
 
@@ -67,7 +73,7 @@ export async function exchangeCredentials({
     try {
       await createTeam({
         userId: organisation.ownerUserId,
-        teamName: slug,
+        teamName: teamName || slug,
         teamUrl,
         organisationId,
         inheritMembers: true,
@@ -108,6 +114,8 @@ export async function exchangeCredentials({
     }
 
     teamCreated = true;
+  } else {
+    team = await syncTeamDisplayName({ team, slug, teamUrl, teamName });
   }
 
   const tokenName = `Token Exchange - ${new Date().toISOString().slice(0, 10)}`;
@@ -134,9 +142,11 @@ export async function exchangeCredentials({
 export async function exchangeTrusted({
   slug,
   organisationId,
+  teamName,
 }: {
   slug: string;
   organisationId: string;
+  teamName?: string | null;
 }): Promise<ExchangeResult> {
   const teamUrl = slugify(slug, { lowercase: true });
 
@@ -174,17 +184,13 @@ export async function exchangeTrusted({
     try {
       await createTeam({
         userId: organisation.ownerUserId,
-        teamName: slug,
+        teamName: teamName || slug,
         teamUrl,
         organisationId,
         inheritMembers: true,
       });
     } catch (err) {
-      const hasP2002 =
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        (err as { code?: unknown }).code === 'P2002';
+      const hasP2002 = err && typeof err === 'object' && 'code' in err && (err as { code?: unknown }).code === 'P2002';
 
       if (hasP2002) {
         return {
@@ -213,6 +219,8 @@ export async function exchangeTrusted({
     }
 
     teamCreated = true;
+  } else {
+    team = await syncTeamDisplayName({ team, slug, teamUrl, teamName });
   }
 
   const tokenName = `Token Exchange - ${new Date().toISOString().slice(0, 10)}`;
@@ -230,4 +238,53 @@ export async function exchangeTrusted({
     apiKey: token,
     teamCreated,
   };
+}
+
+/**
+ * Give an existing team the caller's display name, but only while it still carries the
+ * machine default (the slug). Teams created before `teamName` existed are named
+ * `pinogy-client-{id}`; this renames them on their next exchange. A name a human set in the
+ * Documenso UI is never overwritten — see `teamNameToApply`.
+ *
+ * Written with prisma directly rather than `updateTeam`: that helper looks up
+ * `{ url: data.url, id: { not: teamId } }`, and with `url` undefined the lookup matches any
+ * other team, so a name-only update always throws "Team URL already exists".
+ *
+ * A failed rename is logged and swallowed: the name is cosmetic, and the exchange's job is the
+ * API key.
+ */
+async function syncTeamDisplayName<T extends { id: number; name: string }>({
+  team,
+  slug,
+  teamUrl,
+  teamName,
+}: {
+  team: T;
+  slug: string;
+  teamUrl: string;
+  teamName?: string | null;
+}): Promise<T> {
+  const newName = teamNameToApply({
+    currentName: team.name,
+    slug,
+    teamUrl,
+    requestedName: teamName ?? null,
+  });
+
+  if (!newName) {
+    return team;
+  }
+
+  try {
+    await prisma.team.update({
+      where: { id: team.id },
+      data: { name: newName },
+    });
+
+    return { ...team, name: newName };
+  } catch (err) {
+    console.error(`[token-exchange] failed to rename team ${team.id} to its display name`, err);
+
+    return team;
+  }
 }

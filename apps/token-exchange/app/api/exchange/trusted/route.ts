@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import cors from '@/lib/cors';
 import { exchangeTrusted } from '@/lib/exchange';
+import { normaliseTeamName } from '@/lib/team-name';
 
 function getAuthHeader(req: NextRequest): string | null {
   const auth = req.headers.get('Authorization');
@@ -17,7 +18,10 @@ function getAuthHeader(req: NextRequest): string | null {
  * Returns a Documenso API key for the given org + slug. No credential validation.
  * Gatekeeper: TOKEN_EXCHANGE_SECRET. Use when the caller is trusted (e.g. Groom app).
  *
- * Body: { slug: string, organisationId: string }
+ * Body: { slug: string, organisationId: string, teamName?: string }
+ *
+ * `teamName` is the optional consumer-facing team display name; same semantics as on
+ * POST /api/exchange (see that route's doc comment).
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.TOKEN_EXCHANGE_SECRET;
@@ -58,17 +62,13 @@ export async function POST(request: NextRequest) {
 
   const isRecord = (v: unknown): v is Record<string, unknown> =>
     typeof v === 'object' && v !== null && !Array.isArray(v);
-  const { slug, organisationId } = (isRecord(body) ? body : {}) as {
+  const { slug, organisationId, teamName } = (isRecord(body) ? body : {}) as {
     slug?: string;
     organisationId?: string;
+    teamName?: unknown;
   };
 
-  if (
-    typeof slug !== 'string' ||
-    typeof organisationId !== 'string' ||
-    !slug.trim() ||
-    !organisationId.trim()
-  ) {
+  if (typeof slug !== 'string' || typeof organisationId !== 'string' || !slug.trim() || !organisationId.trim()) {
     return cors(
       request,
       new Response(
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
   const result = await exchangeTrusted({
     slug: slug.trim(),
     organisationId: organisationId.trim(),
+    teamName: normaliseTeamName(teamName),
   });
 
   if (!result.success) {
