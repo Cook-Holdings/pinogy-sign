@@ -2,6 +2,7 @@ import signingCelebration from '@documenso/assets/images/signing-celebration.png
 import { getOptionalSession } from '@documenso/auth/server/lib/utils/get-session';
 import { useOptionalSession } from '@documenso/lib/client-only/providers/session';
 import { isSignupEnabledForProvider } from '@documenso/lib/constants/auth';
+import { isRecipientUpsellEnabled } from '@documenso/lib/constants/recipient-upsells';
 import { loadRecipientBrandingByTeamId } from '@documenso/lib/server-only/branding/load-recipient-branding';
 import { getDocumentAndSenderByToken } from '@documenso/lib/server-only/document/get-document-by-token';
 import { isRecipientAuthorized } from '@documenso/lib/server-only/document/is-recipient-authorized';
@@ -83,7 +84,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const recipientName =
     recipient.name || fields.find((field) => field.type === FieldType.NAME)?.customText || recipient.email;
 
-  const canSignUp = !isExistingUser && isSignupEnabledForProvider('email');
+  // Pinogy fork: the claim-account panel and the Share button are Documenso
+  // promotions; hidden unless NEXT_PRIVATE_ENABLE_RECIPIENT_UPSELLS=true.
+  const canShowUpsells = isRecipientUpsellEnabled();
+
+  const canSignUp = canShowUpsells && !isExistingUser && isSignupEnabledForProvider('email');
 
   const canRedirectToFolder = user && document.userId === user.id && document.folderId && document.team?.url;
 
@@ -92,6 +97,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return {
     isDocumentAccessValid: true,
     canSignUp,
+    canShare: canShowUpsells,
     recipientName,
     recipientEmail: recipient.email,
     signatures,
@@ -112,6 +118,7 @@ export default function CompletedSigningPage({ loaderData }: Route.ComponentProp
   const {
     isDocumentAccessValid,
     canSignUp,
+    canShare,
     recipientName,
     signatures,
     document,
@@ -249,11 +256,13 @@ export default function CompletedSigningPage({ loaderData }: Route.ComponentProp
               ))}
 
             <div className="mt-8 flex w-full max-w-xs flex-col items-stretch gap-4 md:w-auto md:max-w-none md:flex-row md:items-center">
-              <DocumentShareButton
-                documentId={document.id}
-                token={recipient.token}
-                className="w-full max-w-none md:flex-1"
-              />
+              {canShare && (
+                <DocumentShareButton
+                  documentId={document.id}
+                  token={recipient.token}
+                  className="w-full max-w-none md:flex-1"
+                />
+              )}
 
               {isDocumentCompleted(document) && (
                 <EnvelopeDownloadDialog
