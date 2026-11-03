@@ -130,6 +130,13 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
+          # Pinned: gcloud 591.0.0 (runner image 20261025) crashes in
+          # `gcloud config config-helper` with "'Credentials' object has no
+          # attribute 'private_key_id'" under service-account-key auth, which
+          # kubectl hits through gke-gcloud-auth-plugin, so every deploy failed
+          # (2026-11-03). 568.0.0 is the last version a deploy passed on. Unpin
+          # only after a deploy has been seen to pass on a newer version.
+          version: '568.0.0'
 
       - name: Install gke-gcloud-auth-plugin
         run: |
