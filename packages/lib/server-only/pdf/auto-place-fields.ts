@@ -1,6 +1,7 @@
 import { type TFieldAndMeta, ZEnvelopeFieldAndMetaSchema } from '@documenso/lib/types/field-meta';
 import { PDF, rgb } from '@libpdf/core';
-import type { FieldType, Recipient } from '@prisma/client';
+import type { Recipient } from '@prisma/client';
+import { FieldType } from '@prisma/client';
 
 import { parseFieldMetaFromPlaceholder, parseFieldTypeFromPlaceholder } from './helpers';
 
@@ -8,6 +9,34 @@ import { parseFieldMetaFromPlaceholder, parseFieldTypeFromPlaceholder } from './
 const PLACEHOLDER_PATTERN_SOURCE = String.raw`\{\{([^}]+)\}\}`;
 const DEFAULT_FIELD_HEIGHT_PERCENT = 2;
 const MIN_HEIGHT_THRESHOLD = 0.01;
+
+/**
+ * Minimum height, in PDF points, of a signature field placed from a
+ * placeholder.
+ *
+ * A placeholder field takes the size of the placeholder's text, about one line
+ * (~12pt) tall. The drawn signature is fitted into the field keeping its
+ * aspect ratio, so a field that short renders even a full-size signature as a
+ * squiggle, on screen and in the sealed PDF. The field is grown upward from
+ * the placeholder's bottom edge, keeping it on the signature line, into the
+ * space above it.
+ *
+ * Only the field grows: the whiteout over the placeholder text still uses the
+ * text's own box (`removePlaceholdersFromPDF`), so nothing above is erased.
+ * Initials are not included because they render as text, not as an image.
+ */
+export const MIN_SIGNATURE_FIELD_HEIGHT_PT = 40;
+
+const getFieldVerticalBox = (p: PlaceholderInfo): { y: number; height: number } => {
+  if (p.fieldAndMeta.type !== FieldType.SIGNATURE || p.height >= MIN_SIGNATURE_FIELD_HEIGHT_PT) {
+    return { y: p.y, height: p.height };
+  }
+
+  const bottom = p.y + p.height;
+  const top = Math.max(0, bottom - MIN_SIGNATURE_FIELD_HEIGHT_PT);
+
+  return { y: top, height: bottom - top };
+};
 
 type LoadedPdf = Awaited<ReturnType<typeof PDF.load>>;
 type PdfPage = ReturnType<LoadedPdf['getPages']>[number];
@@ -313,10 +342,12 @@ export const convertPlaceholdersToFieldInputs = (
   envelopeItemId?: string,
 ): FieldToCreate[] => {
   return placeholders.map((p) => {
+    const { y, height } = getFieldVerticalBox(p);
+
     const xPercent = (p.x / p.pageWidth) * 100;
-    const yPercent = (p.y / p.pageHeight) * 100;
+    const yPercent = (y / p.pageHeight) * 100;
     const widthPercent = (p.width / p.pageWidth) * 100;
-    const heightPercent = (p.height / p.pageHeight) * 100;
+    const heightPercent = (height / p.pageHeight) * 100;
 
     const finalHeightPercent = heightPercent > MIN_HEIGHT_THRESHOLD ? heightPercent : DEFAULT_FIELD_HEIGHT_PERCENT;
 

@@ -9,6 +9,7 @@ import type { MouseEvent, PointerEvent, RefObject, TouchEvent } from 'react';
 import { useMemo, useRef, useState } from 'react';
 
 import { cn } from '../../lib/utils';
+import { getTrimmedSignatureDataUrl } from './get-trimmed-signature-data-url';
 import { getSvgPathFromStroke } from './helper';
 import { Point } from './point';
 import { SignaturePadColorPicker } from './signature-pad-color-picker';
@@ -161,7 +162,7 @@ export const SignaturePadDraw = ({ className, value, onChange, ...props }: Signa
         setIsSignatureValid(isValidSignature);
 
         if (isValidSignature) {
-          onChange?.($el.current.toDataURL());
+          onChange?.(getTrimmedSignatureDataUrl($el.current));
         }
         ctx.save();
       }
@@ -231,7 +232,7 @@ export const SignaturePadDraw = ({ className, value, onChange, ...props }: Signa
       ctx?.fill(pathData);
     });
 
-    onChange?.($el.current.toDataURL());
+    onChange?.(getTrimmedSignatureDataUrl($el.current));
   };
 
   unsafe_useEffectOnce(() => {
@@ -248,7 +249,14 @@ export const SignaturePadDraw = ({ className, value, onChange, ...props }: Signa
       const img = new Image();
 
       img.onload = () => {
-        ctx?.drawImage(img, 0, 0, Math.min(width, img.width), Math.min(height, img.height));
+        // Stored signatures are cropped to their ink, so draw them centred and
+        // scaled down to fit rather than pinned to the top-left corner. A
+        // full-pad image of the same size still lands at 0,0 at scale 1.
+        const scale = Math.min(width / img.width, height / img.height, 1);
+        const drawWidth = img.width * scale;
+        const drawHeight = img.height * scale;
+
+        ctx?.drawImage(img, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
 
         const defaultImageData = ctx?.getImageData(0, 0, width, height) || null;
 
